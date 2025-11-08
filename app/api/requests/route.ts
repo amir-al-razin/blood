@@ -17,6 +17,14 @@ const createRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Handle build-time or missing database gracefully
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: 'Database not available' },
+        { status: 503 }
+      )
+    }
+
     // Check database connection first
     await db.$connect()
     
@@ -122,6 +130,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Handle build-time or missing database gracefully
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({
+        requests: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          pages: 0
+        }
+      })
+    }
+
     // Check database connection first
     await db.$connect()
     

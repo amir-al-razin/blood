@@ -161,6 +161,15 @@ export const auditUtils = {
 export const healthCheck = {
   async checkConnection() {
     try {
+      // Handle build-time or missing database gracefully
+      if (!process.env.DATABASE_URL) {
+        return { 
+          status: 'unhealthy', 
+          error: 'Database URL not configured', 
+          timestamp: new Date() 
+        }
+      }
+
       await db.$queryRaw`SELECT 1`
       return { status: 'healthy', timestamp: new Date() }
     } catch (error) {
