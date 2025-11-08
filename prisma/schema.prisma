@@ -1,0 +1,199 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed with bcrypt
+  role      Role     @default(STAFF)
+  name      String
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  auditLogs AuditLog[]
+  matches   Match[]    @relation("MatchCreatedBy")
+
+  @@map("users")
+}
+
+model Donor {
+  id               String    @id @default(cuid())
+  name             String
+  phone            String    @unique
+  email            String?
+  bloodType        BloodType
+  location         String
+  area             String
+  address          String?
+  dateOfBirth      DateTime
+  gender           Gender
+  weight           Int
+  lastDonation     DateTime?
+  isAvailable      Boolean   @default(true)
+  isVerified       Boolean   @default(false)
+  donationCount    Int       @default(0)
+  reliabilityScore Float     @default(0.0)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  matches Match[]
+
+  @@index([bloodType, isAvailable, isVerified])
+  @@index([area])
+  @@map("donors")
+}
+
+model Request {
+  id              String        @id @default(cuid())
+  referenceId     String        @unique @default(cuid())
+  requesterName   String
+  requesterPhone  String
+  requesterEmail  String?
+  bloodType       BloodType
+  location        String
+  hospital        String
+  urgencyLevel    UrgencyLevel
+  unitsRequired   Int           @default(1)
+  status          RequestStatus @default(PENDING)
+  notes           String?
+  prescriptionUrl String?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  matches Match[]
+
+  @@index([status, urgencyLevel])
+  @@index([bloodType])
+  @@map("requests")
+}
+
+model Match {
+  id          String      @id @default(cuid())
+  donorId     String
+  requestId   String
+  status      MatchStatus @default(PENDING)
+  contactedAt DateTime?
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdBy   String      // Admin user ID
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  donor     Donor @relation(fields: [donorId], references: [id])
+  request   Request @relation(fields: [requestId], references: [id])
+  createdByUser User @relation("MatchCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([status])
+  @@index([donorId])
+  @@index([requestId])
+  @@map("matches")
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  type      NotificationType
+  recipient String             // Phone or email
+  message   String
+  status    NotificationStatus @default(PENDING)
+  sentAt    DateTime?
+  error     String?
+  createdAt DateTime           @default(now())
+
+  @@index([status, createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String   // e.g., "donor", "request", "match"
+  entityId  String
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+enum BloodType {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+}
+
+enum Role {
+  SUPER_ADMIN
+  STAFF
+  VIEWER
+}
+
+enum UrgencyLevel {
+  CRITICAL
+  URGENT
+  NORMAL
+}
+
+enum RequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MatchStatus {
+  PENDING
+  CONTACTED
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum NotificationType {
+  SMS
+  EMAIL
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
