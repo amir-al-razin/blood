@@ -18,7 +18,7 @@ const createRequestSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Handle build-time or missing database gracefully
-    if (!process.env.DATABASE_URL) {
+    if (!process.env.DATABASE_URL || process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json(
         { error: 'Database not available' },
         { status: 503 }
@@ -90,11 +90,14 @@ export async function POST(request: NextRequest) {
     console.error('Error creating blood request:', error)
 
     if (error instanceof z.ZodError) {
-      console.error('Validation errors:', error.errors)
+      console.error('Validation errors:', error.issues)
       return NextResponse.json(
         { 
           error: 'Validation failed', 
-          details: error.errors,
+          details: error.issues.map(issue => ({
+            path: issue.path.join('.'),
+            message: issue.message
+          })),
           message: 'Please check your form data and try again'
         },
         { status: 400 }
@@ -131,7 +134,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Handle build-time or missing database gracefully
-    if (!process.env.DATABASE_URL) {
+    if (!process.env.DATABASE_URL || process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json({
         requests: [],
         pagination: {

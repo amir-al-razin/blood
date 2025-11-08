@@ -26,7 +26,7 @@ const createDonorSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Handle build-time or missing database gracefully
-    if (!process.env.DATABASE_URL) {
+    if (!process.env.DATABASE_URL || process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json(
         { error: 'Database not available' },
         { status: 503 }
@@ -34,14 +34,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    
+
     // Validate the data
     const validatedData = createDonorSchema.parse(body)
 
     // Check if phone number already exists
-    const existingDonor = await db.donor.findUnique({
-      where: { phone: validatedData.phone }
-    })
+    let existingDonor
+    try {
+      existingDonor = await db.donor.findUnique({
+        where: { phone: validatedData.phone }
+      })
+    } catch (dbError) {
+      console.error('Database connection error:', dbError)
+      return NextResponse.json(
+        { error: 'Database not available' },
+        { status: 503 }
+      )
+    }
 
     if (existingDonor) {
       return NextResponse.json(
@@ -55,12 +64,12 @@ export async function POST(request: NextRequest) {
       const daysSinceLastDonation = Math.floor(
         (new Date().getTime() - validatedData.lastDonation.getTime()) / (1000 * 60 * 60 * 24)
       )
-      
+
       const requiredGap = validatedData.gender === 'MALE' ? 90 : 120
-      
+
       if (daysSinceLastDonation < requiredGap) {
         return NextResponse.json(
-          { 
+          {
             error: 'You are not eligible to donate yet',
             nextEligibleDate: new Date(validatedData.lastDonation.getTime() + requiredGap * 24 * 60 * 60 * 1000)
           },
@@ -70,26 +79,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the donor
-    const newDonor = await db.donor.create({
-      data: {
-        name: validatedData.name,
-        phone: validatedData.phone,
-        email: validatedData.email,
-        bloodType: validatedData.bloodType,
-        location: validatedData.location,
-        area: validatedData.area,
-        address: validatedData.address,
-        dateOfBirth: validatedData.dateOfBirth,
-        gender: validatedData.gender,
-        weight: validatedData.weight,
-        lastDonation: validatedData.lastDonation,
-        isAvailable: validatedData.isAvailable,
-        isVerified: false, // Requires admin verification
-        notes: validatedData.hasHealthConditions 
-          ? `Health conditions: ${validatedData.healthConditions || 'Not specified'}. Medications: ${validatedData.medications || 'None specified'}.`
-          : null
-      }
-    })
+    let newDonor
+    try {
+      newDonor = await db.donor.create({
+        data: {
+          name: validatedData.name,
+          phone: validatedData.phone,
+          email: validatedData.email,
+          bloodType: validatedData.bloodType,
+          location: validatedData.location,
+          area: validatedData.area,
+          address: validatedData.address,
+          dateOfBirth: validatedData.dateOfBirth,
+          gender: validatedData.gender,
+          weight: validatedData.weight,
+          lastDonation: validatedData.lastDonation,
+          isAvailable: validatedData.isAvailable,
+          isVerified: false, // Requires admin verification
+          notes: validatedData.hasHealthConditions
+            ? `Health conditions: ${validatedData.healthConditions || 'Not specified'}. Medications: ${validatedData.medications || 'None specified'}.`
+            : null
+        }
+      })
+    } catch (dbError) {
+      console.error('Database creation error:', dbError)
+      return NextResponse.json(
+        { error: 'Database not available' },
+        { status: 503 }
+      )
+    }
 
     // TODO: Send notification to admin team about new donor registration
     // TODO: Send welcome SMS/email to donor
@@ -105,8 +123,27 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        {
+          error: 'Validation failed',
+          details: error.issues.map(issue => ({
+            path: issue.path.join('.'),
+            message: issue.message
+          }))
+        },
         { status: 400 }
+      )
+    }
+
+    // Handle database connection errors during build
+    if (error instanceof Error && (
+      error.message?.includes('connect') ||
+      error.message?.includes('ECONNREFUSED') ||
+      error.message?.includes('database') ||
+      error.message?.includes('prisma')
+    )) {
+      return NextResponse.json(
+        { error: 'Database not available' },
+        { status: 503 }
       )
     }
 
@@ -120,7 +157,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Handle build-time or missing database gracefully
-    if (!process.env.DATABASE_URL) {
+    if (!process.env.DATABASE_URL || process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json({
         donors: [],
         pagination: {
@@ -152,33 +189,47 @@ export async function GET(request: NextRequest) {
     if (isVerified !== null) where.isVerified = isVerified === 'true'
 
     // Get donors with pagination
-    const [donors, total] = await Promise.all([
-      db.donor.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: [
-          { isVerified: 'desc' },
-          { reliabilityScore: 'desc' },
-          { createdAt: 'desc' }
-        ],
-        select: {
-          id: true,
-          name: true,
-          bloodType: true,
-          location: true,
-          area: true,
-          isAvailable: true,
-          isVerified: true,
-          donationCount: true,
-          reliabilityScore: true,
-          lastDonation: true,
-          createdAt: true,
-          // Don't include sensitive information like phone/email in list view
+    let donors, total
+    try {
+      [donors, total] = await Promise.all([
+        db.donor.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: [
+            { isVerified: 'desc' },
+            { reliabilityScore: 'desc' },
+            { createdAt: 'desc' }
+          ],
+          select: {
+            id: true,
+            name: true,
+            bloodType: true,
+            location: true,
+            area: true,
+            isAvailable: true,
+            isVerified: true,
+            donationCount: true,
+            reliabilityScore: true,
+            lastDonation: true,
+            createdAt: true,
+            // Don't include sensitive information like phone/email in list view
+          }
+        }),
+        db.donor.count({ where })
+      ])
+    } catch (dbError) {
+      console.error('Database query error:', dbError)
+      return NextResponse.json({
+        donors: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          pages: 0
         }
-      }),
-      db.donor.count({ where })
-    ])
+      })
+    }
 
     return NextResponse.json({
       donors,
@@ -192,23 +243,16 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching donors:', error)
-    
+
     // Return empty data for build-time or database connection issues
-    if (error.message?.includes('connect') || error.message?.includes('ECONNREFUSED')) {
-      return NextResponse.json({
-        donors: [],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: 0,
-          pages: 0
-        }
-      })
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to fetch donors' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      donors: [],
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        pages: 0
+      }
+    })
   }
 }
