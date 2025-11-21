@@ -1,42 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { db } from '@/lib/db'
 import { donorUtils } from '@/lib/db-utils'
+import { contactAccessUtils, auditUtils, consentUtils } from '@/lib/privacy-utils'
+import { createSecureApiHandler, securityConfigs, createSuccessResponse, createErrorResponse } from '@/lib/api-security'
+import { donorRegistrationSchema, queryParamsSchema } from '@/lib/validation-schemas'
+import { sessionUtils } from '@/lib/auth-utils'
 
-const createDonorSchema = z.object({
-  name: z.string().min(2),
-  phone: z.string().regex(/^(\+880|880|0)?1[3-9]\d{8}$/),
-  email: z.string().email().optional().nullable(),
-  bloodType: z.enum(['A_POSITIVE', 'A_NEGATIVE', 'B_POSITIVE', 'B_NEGATIVE', 'AB_POSITIVE', 'AB_NEGATIVE', 'O_POSITIVE', 'O_NEGATIVE']),
-  location: z.string().min(1),
-  area: z.string().min(2),
-  address: z.string().optional().nullable(),
-  dateOfBirth: z.string().transform((str) => new Date(str)),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
-  weight: z.number().min(50).max(200),
-  lastDonation: z.string().transform((str) => str ? new Date(str) : null).optional().nullable(),
-  hasHealthConditions: z.boolean(),
-  healthConditions: z.string().optional().nullable(),
-  medications: z.string().optional().nullable(),
-  isAvailable: z.boolean().default(true),
-  privacyConsent: z.boolean().refine((val) => val === true),
-  termsConsent: z.boolean().refine((val) => val === true)
-})
-
-export async function POST(request: NextRequest) {
+// POST handler for donor registration (public endpoint)
+const handleDonorRegistration = createSecureApiHandler(async (request, context) => {
   try {
     // Handle build-time or missing database gracefully
     if (!process.env.DATABASE_URL || process.env.NEXT_PHASE === 'phase-production-build') {
-      return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 503 }
-      )
+      return createErrorResponse('Database not available', 503)
     }
 
-    const body = await request.json()
-
-    // Validate the data
-    const validatedData = createDonorSchema.parse(body)
+    // Use sanitized input from security middleware
+    const validatedData = context.sanitizedInput
 
     // Check if phone number already exists
     let existingDonor
@@ -53,10 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingDonor) {
-      return NextResponse.json(
-        { error: 'A donor with this phone number already exists' },
-        { status: 400 }
-      )
+      return createErrorResponse('A donor with this phone number already exists', 400)
     }
 
     // Check eligibility based on last donation
@@ -68,17 +44,13 @@ export async function POST(request: NextRequest) {
       const requiredGap = validatedData.gender === 'MALE' ? 90 : 120
 
       if (daysSinceLastDonation < requiredGap) {
-        return NextResponse.json(
-          {
-            error: 'You are not eligible to donate yet',
-            nextEligibleDate: new Date(validatedData.lastDonation.getTime() + requiredGap * 24 * 60 * 60 * 1000)
-          },
-          { status: 400 }
-        )
+        return createErrorResponse('You are not eligible to donate yet', 400, {
+          nextEligibleDate: new Date(validatedData.lastDonation.getTime() + requiredGap * 24 * 60 * 60 * 1000)
+        })
       }
     }
 
-    // Create the donor
+    // Create the donor with privacy settings
     let newDonor
     try {
       newDonor = await db.donor.create({
@@ -96,43 +68,52 @@ export async function POST(request: NextRequest) {
           lastDonation: validatedData.lastDonation,
           isAvailable: validatedData.isAvailable,
           isVerified: false, // Requires admin verification
+          allowContactByPhone: validatedData.allowContactByPhone,
+          allowContactByEmail: validatedData.allowContactByEmail,
+          allowDataSharing: validatedData.allowDataSharing,
+          privacyConsent: validatedData.privacyConsent,
+          consentDate: new Date(),
           notes: validatedData.hasHealthConditions
             ? `Health conditions: ${validatedData.healthConditions || 'Not specified'}. Medications: ${validatedData.medications || 'None specified'}.`
             : null
         }
       })
+
+      // Log consent
+      await consentUtils.logConsent({
+        donorId: newDonor.id,
+        consentType: 'privacy',
+        granted: validatedData.privacyConsent,
+        version: '1.0',
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent
+      })
+
+      await consentUtils.logConsent({
+        donorId: newDonor.id,
+        consentType: 'terms',
+        granted: validatedData.termsConsent,
+        version: '1.0',
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent
+      })
+
     } catch (dbError) {
       console.error('Database creation error:', dbError)
-      return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 503 }
-      )
+      return createErrorResponse('Database not available', 503)
     }
 
     // TODO: Send notification to admin team about new donor registration
     // TODO: Send welcome SMS/email to donor
 
-    return NextResponse.json({
+    return createSuccessResponse({
       success: true,
       donorId: newDonor.id,
       message: 'Donor registration submitted successfully'
-    })
+    }, 201)
 
   } catch (error) {
     console.error('Error creating donor:', error)
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          details: error.issues.map(issue => ({
-            path: issue.path.join('.'),
-            message: issue.message
-          }))
-        },
-        { status: 400 }
-      )
-    }
 
     // Handle database connection errors during build
     if (error instanceof Error && (
@@ -141,24 +122,23 @@ export async function POST(request: NextRequest) {
       error.message?.includes('database') ||
       error.message?.includes('prisma')
     )) {
-      return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 503 }
-      )
+      return createErrorResponse('Database not available', 503)
     }
 
-    return NextResponse.json(
-      { error: 'Failed to register donor' },
-      { status: 500 }
-    )
+    return createErrorResponse('Failed to register donor', 500)
   }
-}
+}, {
+  ...securityConfigs.public,
+  validateInput: donorRegistrationSchema,
+  rateLimitType: 'forms'
+})
 
-export async function GET(request: NextRequest) {
+// GET handler for donor listing (authenticated endpoint)
+const handleDonorListing = createSecureApiHandler(async (request, context) => {
   try {
     // Handle build-time or missing database gracefully
     if (!process.env.DATABASE_URL || process.env.NEXT_PHASE === 'phase-production-build') {
-      return NextResponse.json({
+      return createSuccessResponse({
         donors: [],
         pagination: {
           page: 1,
@@ -170,13 +150,24 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const bloodType = searchParams.get('bloodType')
-    const location = searchParams.get('location')
+    
+    // Validate query parameters
+    const queryValidation = queryParamsSchema.safeParse({
+      page: searchParams.get('page'),
+      limit: searchParams.get('limit'),
+      bloodType: searchParams.get('bloodType'),
+      location: searchParams.get('location')
+    })
+
+    if (!queryValidation.success) {
+      return createErrorResponse('Invalid query parameters', 400, queryValidation.error.errors)
+    }
+
+    const { page = 1, limit = 10, bloodType, location } = queryValidation.data
     const area = searchParams.get('area')
     const isAvailable = searchParams.get('isAvailable')
     const isVerified = searchParams.get('isVerified')
+    const includeContact = searchParams.get('includeContact') === 'true'
 
     const skip = (page - 1) * limit
 
@@ -187,6 +178,12 @@ export async function GET(request: NextRequest) {
     if (area) where.area = { contains: area, mode: 'insensitive' }
     if (isAvailable !== null) where.isAvailable = isAvailable === 'true'
     if (isVerified !== null) where.isVerified = isVerified === 'true'
+
+    // Exclude donors who requested deletion
+    where.deletionRequestedAt = null
+
+    // Get current user for access control
+    const user = await sessionUtils.getCurrentUser()
 
     // Get donors with pagination
     let donors, total
@@ -213,14 +210,44 @@ export async function GET(request: NextRequest) {
             reliabilityScore: true,
             lastDonation: true,
             createdAt: true,
-            // Don't include sensitive information like phone/email in list view
+            // Include contact info only for authorized users
+            ...(includeContact && user && ['STAFF', 'SUPER_ADMIN'].includes(user.role) ? {
+              phone: true,
+              email: true,
+              address: true,
+              dateOfBirth: true,
+              gender: true,
+              weight: true,
+              notes: true,
+              allowContactByPhone: true,
+              allowContactByEmail: true,
+              allowDataSharing: true
+            } : {})
           }
         }),
         db.donor.count({ where })
       ])
+
+      // Log contact information access if requested
+      if (includeContact && context.user && ['STAFF', 'SUPER_ADMIN'].includes(context.user.role)) {
+        await auditUtils.logAction({
+          userId: context.user.id,
+          action: 'BULK_VIEW_CONTACT_INFO',
+          entity: 'donor',
+          entityId: 'bulk',
+          details: { 
+            donorCount: donors.length,
+            filters: { bloodType, location, area, isAvailable, isVerified }
+          },
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+          sensitive: true
+        })
+      }
+
     } catch (dbError) {
       console.error('Database query error:', dbError)
-      return NextResponse.json({
+      return createSuccessResponse({
         donors: [],
         pagination: {
           page: 1,
@@ -231,7 +258,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({
+    return createSuccessResponse({
       donors,
       pagination: {
         page,
@@ -245,7 +272,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching donors:', error)
 
     // Return empty data for build-time or database connection issues
-    return NextResponse.json({
+    return createSuccessResponse({
       donors: [],
       pagination: {
         page: 1,
@@ -255,4 +282,11 @@ export async function GET(request: NextRequest) {
       }
     })
   }
-}
+}, {
+  ...securityConfigs.staffOnly,
+  validateInput: queryParamsSchema
+})
+
+// Export the handlers
+export const POST = handleDonorRegistration
+export const GET = handleDonorListing

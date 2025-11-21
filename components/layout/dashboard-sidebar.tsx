@@ -10,6 +10,7 @@ import {
   UserCheck, 
   BarChart3, 
   Settings,
+  Shield,
   LogOut,
   Menu,
   X
@@ -58,6 +59,12 @@ const navigation = [
     name: 'Analytics',
     href: '/dashboard/analytics',
     icon: BarChart3,
+    roles: ['SUPER_ADMIN', 'STAFF']
+  },
+  {
+    name: 'Privacy',
+    href: '/dashboard/privacy',
+    icon: Shield,
     roles: ['SUPER_ADMIN', 'STAFF']
   },
   {

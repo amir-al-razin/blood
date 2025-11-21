@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { MobileInput, MobileTextarea, MobileButton, MobileForm, MobileFormField } from '@/components/ui/mobile-form'
+import { useMobile } from '@/hooks/use-mobile'
 import Link from 'next/link'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
@@ -39,6 +41,9 @@ const donorRegistrationSchema = z.object({
   healthConditions: z.string().optional(),
   medications: z.string().optional(),
   isAvailable: z.boolean().default(true),
+  allowContactByPhone: z.boolean().default(true),
+  allowContactByEmail: z.boolean().default(true),
+  allowDataSharing: z.boolean().default(false),
   privacyConsent: z.boolean().refine((val) => val === true, 'You must agree to the privacy policy'),
   termsConsent: z.boolean().refine((val) => val === true, 'You must agree to the terms and conditions')
 })
@@ -66,6 +71,7 @@ export function DonorRegistrationForm() {
   const [eligibilityStatus, setEligibilityStatus] = useState<'checking' | 'eligible' | 'ineligible' | null>(null)
   const [nextEligibleDate, setNextEligibleDate] = useState<string | null>(null)
   const router = useRouter()
+  const { isMobile } = useMobile()
 
   const {
     register,
@@ -79,6 +85,9 @@ export function DonorRegistrationForm() {
     defaultValues: {
       isAvailable: true,
       hasHealthConditions: false,
+      allowContactByPhone: true,
+      allowContactByEmail: true,
+      allowDataSharing: false,
       privacyConsent: false,
       termsConsent: false
     }
@@ -170,7 +179,10 @@ export function DonorRegistrationForm() {
           email: data.email || null,
           address: data.address || null,
           healthConditions: data.hasHealthConditions ? data.healthConditions : null,
-          medications: data.medications || null
+          medications: data.medications || null,
+          allowContactByPhone: data.allowContactByPhone,
+          allowContactByEmail: data.allowContactByEmail,
+          allowDataSharing: data.allowDataSharing
         })
       })
 
@@ -190,22 +202,24 @@ export function DonorRegistrationForm() {
   }
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
+    <Card className={`max-w-2xl mx-auto ${isMobile ? 'mx-4 rounded-lg' : ''}`}>
+      <CardHeader className={isMobile ? 'px-4 py-6' : ''}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <CardTitle>Donor Registration</CardTitle>
-            <CardDescription>Step {currentStep} of {totalSteps}</CardDescription>
+            <CardTitle className={isMobile ? 'text-lg' : ''}>Donor Registration</CardTitle>
+            <CardDescription className={isMobile ? 'text-sm' : ''}>
+              Step {currentStep} of {totalSteps}
+            </CardDescription>
           </div>
-          <div className="text-sm text-gray-500">
+          <div className={`text-sm text-gray-500 ${isMobile ? 'text-xs' : ''}`}>
             {Math.round(progress)}% Complete
           </div>
         </div>
         <Progress value={progress} className="w-full" />
       </CardHeader>
 
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <CardContent className={isMobile ? 'px-4 pb-6' : ''}>
+        <MobileForm onSubmit={handleSubmit(onSubmit)}>
           {/* Step 1: Basic Information */}
           {currentStep === 1 && (
             <div className="space-y-4">
@@ -213,31 +227,32 @@ export function DonorRegistrationForm() {
                 Basic Information
               </h3>
 
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
+              <MobileFormField
+                label="Full Name"
+                required
+                error={errors.name?.message}
+              >
+                <MobileInput
                   id="name"
                   placeholder="Enter your full name"
                   {...register('name')}
                   className={errors.name ? 'border-red-500' : ''}
                 />
-                {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name.message}</p>
-                )}
-              </div>
+              </MobileFormField>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
+              <MobileFormField
+                label="Phone Number"
+                required
+                error={errors.phone?.message}
+              >
+                <MobileInput
                   id="phone"
+                  type="tel"
                   placeholder="+880 1700-000000"
                   {...register('phone')}
                   className={errors.phone ? 'border-red-500' : ''}
                 />
-                {errors.phone && (
-                  <p className="text-sm text-red-500">{errors.phone.message}</p>
-                )}
-              </div>
+              </MobileFormField>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address (Optional)</Label>
@@ -489,6 +504,45 @@ export function DonorRegistrationForm() {
                 </div>
               )}
 
+              {/* Privacy Preferences */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900">Communication Preferences</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="allowContactByPhone"
+                      checked={watchedValues.allowContactByPhone}
+                      onCheckedChange={(checked) => setValue('allowContactByPhone', checked as boolean)}
+                    />
+                    <Label htmlFor="allowContactByPhone" className="text-sm">
+                      Allow contact via phone/SMS for donation requests
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="allowContactByEmail"
+                      checked={watchedValues.allowContactByEmail}
+                      onCheckedChange={(checked) => setValue('allowContactByEmail', checked as boolean)}
+                    />
+                    <Label htmlFor="allowContactByEmail" className="text-sm">
+                      Allow contact via email for donation requests
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="allowDataSharing"
+                      checked={watchedValues.allowDataSharing}
+                      onCheckedChange={(checked) => setValue('allowDataSharing', checked as boolean)}
+                    />
+                    <Label htmlFor="allowDataSharing" className="text-sm">
+                      Allow anonymized data to be used for research and statistics
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
               {/* Availability */}
               <div className="space-y-3">
                 <div className="flex items-center space-x-2">
@@ -549,25 +603,30 @@ export function DonorRegistrationForm() {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6">
-            <Button
+          <div className={`flex justify-between pt-6 ${isMobile ? 'flex-col space-y-3' : ''}`}>
+            <MobileButton
               type="button"
               variant="outline"
               onClick={prevStep}
               disabled={currentStep === 1}
+              className={isMobile ? 'w-full order-2' : ''}
             >
               Previous
-            </Button>
+            </MobileButton>
 
             {currentStep < totalSteps ? (
-              <Button type="button" onClick={nextStep}>
+              <MobileButton 
+                type="button" 
+                onClick={nextStep}
+                className={isMobile ? 'w-full order-1' : ''}
+              >
                 Next
-              </Button>
+              </MobileButton>
             ) : (
-              <Button 
+              <MobileButton 
                 type="submit" 
                 disabled={isSubmitting || eligibilityStatus !== 'eligible'} 
-                className="bg-red-600 hover:bg-red-700"
+                className={`bg-red-600 hover:bg-red-700 ${isMobile ? 'w-full order-1' : ''}`}
               >
                 {isSubmitting ? (
                   <>
@@ -577,10 +636,10 @@ export function DonorRegistrationForm() {
                 ) : (
                   'Complete Registration'
                 )}
-              </Button>
+              </MobileButton>
             )}
           </div>
-        </form>
+        </MobileForm>
       </CardContent>
     </Card>
   )

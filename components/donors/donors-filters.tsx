@@ -93,14 +93,14 @@ export function DonorsFilters() {
 
         {/* Blood Type Filter */}
         <Select
-          value={filters.bloodType}
-          onValueChange={(value) => handleFilterChange('bloodType', value)}
+          value={filters.bloodType || "all"}
+          onValueChange={(value) => handleFilterChange('bloodType', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[120px]">
             <SelectValue placeholder="Blood Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem>
             {bloodTypes.map((type) => (
               <SelectItem key={type.value} value={type.value}>
                 {type.label}
@@ -111,14 +111,14 @@ export function DonorsFilters() {
 
         {/* Verification Status Filter */}
         <Select
-          value={filters.isVerified}
-          onValueChange={(value) => handleFilterChange('isVerified', value)}
+          value={filters.isVerified || "all"}
+          onValueChange={(value) => handleFilterChange('isVerified', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="Verification" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             {verificationStatuses.map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}
@@ -129,14 +129,14 @@ export function DonorsFilters() {
 
         {/* Availability Filter */}
         <Select
-          value={filters.isAvailable}
-          onValueChange={(value) => handleFilterChange('isAvailable', value)}
+          value={filters.isAvailable || "all"}
+          onValueChange={(value) => handleFilterChange('isAvailable', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[120px]">
             <SelectValue placeholder="Availability" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             {availabilityStatuses.map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}

@@ -86,14 +86,14 @@ export function MatchesFilters() {
 
         {/* Status Filter */}
         <Select
-          value={filters.status}
-          onValueChange={(value) => handleFilterChange('status', value)}
+          value={filters.status || "all"}
+          onValueChange={(value) => handleFilterChange('status', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Statuses</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
             {matchStatuses.map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}
@@ -104,14 +104,14 @@ export function MatchesFilters() {
 
         {/* Blood Type Filter */}
         <Select
-          value={filters.bloodType}
-          onValueChange={(value) => handleFilterChange('bloodType', value)}
+          value={filters.bloodType || "all"}
+          onValueChange={(value) => handleFilterChange('bloodType', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[120px]">
             <SelectValue placeholder="Blood Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem>
             {bloodTypes.map((type) => (
               <SelectItem key={type.value} value={type.value}>
                 {type.label}

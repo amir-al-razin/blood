@@ -11,19 +11,39 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String   // Hashed with bcrypt
-  role      Role     @default(STAFF)
-  name      String
-  phone     String?
-  isActive  Boolean  @default(true)
+  id       String  @id @default(cuid())
+  email    String  @unique
+  password String // Hashed with bcrypt
+  role     Role    @default(STAFF)
+  name     String
+  phone    String?
+  isActive Boolean @default(true)
+
+  // Security fields
+  isLocked          Boolean   @default(false)
+  lockedUntil       DateTime?
+  passwordChangedAt DateTime  @default(now())
+  passwordHistory   String[]  @default([]) // Store hashed previous passwords
+
+  // Two-Factor Authentication
+  twoFactorEnabled     Boolean  @default(false)
+  twoFactorSecret      String? // TOTP secret
+  twoFactorBackupCodes String[] @default([]) // Backup codes
+
+  // Session management
+  lastLoginAt      DateTime?
+  lastLoginIp      String?
+  failedLoginCount Int       @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  auditLogs AuditLog[]
-  matches   Match[]    @relation("MatchCreatedBy")
+  auditLogs      AuditLog[]
+  matches        Match[]           @relation("MatchCreatedBy")
+  dataDeletions  DataDeletionLog[] @relation("DataDeletionBy")
+  loginAttempts  LoginAttempt[]
+  securityEvents SecurityEvent[]
 
   @@map("users")
 }
@@ -46,11 +66,24 @@ model Donor {
   donationCount    Int       @default(0)
   reliabilityScore Float     @default(0.0)
   notes            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+
+  // Privacy settings
+  allowContactByPhone Boolean  @default(true)
+  allowContactByEmail Boolean  @default(true)
+  allowDataSharing    Boolean  @default(false)
+  privacyConsent      Boolean  @default(true)
+  consentDate         DateTime @default(now())
+
+  // Data retention
+  dataRetentionConsent Boolean   @default(true)
+  deletionRequestedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  matches Match[]
+  matches         Match[]
+  privacySettings DonorPrivacySettings?
 
   @@index([bloodType, isAvailable, isVerified])
   @@index([area])
@@ -94,14 +127,14 @@ model Match {
   rejectedAt  DateTime?
   completedAt DateTime?
   notes       String?
-  createdBy   String      // Admin user ID
+  createdBy   String // Admin user ID
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
   // Relations
-  donor     Donor @relation(fields: [donorId], references: [id])
-  request   Request @relation(fields: [requestId], references: [id])
-  createdByUser User @relation("MatchCreatedBy", fields: [createdBy], references: [id])
+  donor         Donor   @relation(fields: [donorId], references: [id])
+  request       Request @relation(fields: [requestId], references: [id])
+  createdByUser User    @relation("MatchCreatedBy", fields: [createdBy], references: [id])
 
   @@index([status])
   @@index([donorId])
@@ -112,7 +145,7 @@ model Match {
 model Notification {
   id        String             @id @default(cuid())
   type      NotificationType
-  recipient String             // Phone or email
+  recipient String // Phone or email
   message   String
   status    NotificationStatus @default(PENDING)
   sentAt    DateTime?
@@ -125,19 +158,22 @@ model Notification {
 
 model AuditLog {
   id        String   @id @default(cuid())
-  userId    String
+  userId    String? // Nullable for system actions
   action    String
-  entity    String   // e.g., "donor", "request", "match"
+  entity    String // e.g., "donor", "request", "match"
   entityId  String
   details   Json?
   ipAddress String?
+  userAgent String?
+  sensitive Boolean  @default(false) // Mark sensitive data access
   createdAt DateTime @default(now())
 
   // Relations
-  user User @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@index([userId, createdAt])
   @@index([entity, entityId])
+  @@index([sensitive, createdAt])
   @@map("audit_logs")
 }
 
@@ -196,4 +232,181 @@ enum NotificationStatus {
   PENDING
   SENT
   FAILED
+}
+
+model DonorPrivacySettings {
+  id      String @id @default(cuid())
+  donorId String @unique
+
+  // Contact preferences
+  allowSMSNotifications   Boolean @default(true)
+  allowEmailNotifications Boolean @default(true)
+  allowPhoneCalls         Boolean @default(false)
+
+  // Data sharing preferences
+  shareLocationWithRequests  Boolean @default(true)
+  shareStatisticsAnonymously Boolean @default(true)
+  allowResearchParticipation Boolean @default(false)
+
+  // Visibility settings
+  hideFromPublicStats Boolean @default(false)
+  anonymizeInReports  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  donor Donor @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  @@map("donor_privacy_settings")
+}
+
+model DataDeletionLog {
+  id         String   @id @default(cuid())
+  entityType String // "donor", "request", etc.
+  entityId   String
+  deletedBy  String? // User ID who performed deletion
+  reason     String
+  dataBackup Json? // Encrypted backup of deleted data for audit
+  deletedAt  DateTime @default(now())
+
+  // Relations
+  deletedByUser User? @relation("DataDeletionBy", fields: [deletedBy], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([deletedAt])
+  @@map("data_deletion_logs")
+}
+
+model ConsentLog {
+  id          String   @id @default(cuid())
+  donorId     String
+  consentType String // "privacy", "data_sharing", "communications"
+  granted     Boolean
+  version     String // Version of privacy policy/terms
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([donorId, consentType])
+  @@index([createdAt])
+  @@map("consent_logs")
+}
+
+model SecurityEvent {
+  id          String                @id @default(cuid())
+  type        SecurityEventType
+  severity    SecurityEventSeverity
+  description String
+  ipAddress   String?
+  userAgent   String?
+  userId      String?
+  metadata    Json?
+  timestamp   DateTime              @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([type, timestamp])
+  @@index([severity, timestamp])
+  @@index([userId, timestamp])
+  @@index([ipAddress, timestamp])
+  @@map("security_events")
+}
+
+model SecurityAlert {
+  id              String                @id @default(cuid())
+  type            SecurityEventType
+  severity        SecurityEventSeverity
+  count           Int
+  firstOccurrence DateTime
+  lastOccurrence  DateTime
+  ipAddresses     String[]              @default([])
+  userIds         String[]              @default([])
+  isResolved      Boolean               @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  notes           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([type, isResolved])
+  @@index([severity, isResolved])
+  @@index([lastOccurrence])
+  @@map("security_alerts")
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, timestamp])
+  @@index([success, timestamp])
+  @@index([ipAddress, timestamp])
+  @@map("login_attempts")
+}
+
+model RateLimitLog {
+  id          String   @id @default(cuid())
+  identifier  String // IP + User Agent hash or User ID
+  endpoint    String
+  method      String
+  count       Int
+  windowStart DateTime
+  windowEnd   DateTime
+  blocked     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([identifier, windowStart])
+  @@index([endpoint, windowStart])
+  @@index([blocked, createdAt])
+  @@map("rate_limit_logs")
+}
+
+model FileUploadLog {
+  id            String   @id @default(cuid())
+  filename      String
+  originalName  String
+  mimeType      String
+  size          Int
+  uploadedBy    String?
+  ipAddress     String?
+  userAgent     String?
+  scanResult    String? // Malware scan result
+  isQuarantined Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([uploadedBy, createdAt])
+  @@index([isQuarantined])
+  @@index([scanResult])
+  @@map("file_upload_logs")
+}
+
+enum SecurityEventType {
+  FAILED_LOGIN
+  SUSPICIOUS_ACTIVITY
+  RATE_LIMIT_EXCEEDED
+  UNAUTHORIZED_ACCESS
+  DATA_BREACH_ATTEMPT
+  MALICIOUS_INPUT
+  CSRF_ATTACK
+  XSS_ATTEMPT
+  SQL_INJECTION_ATTEMPT
+  FILE_UPLOAD_VIOLATION
+  PRIVILEGE_ESCALATION
+  BRUTE_FORCE_ATTACK
+}
+
+enum SecurityEventSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

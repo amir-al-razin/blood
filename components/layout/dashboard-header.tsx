@@ -79,11 +79,11 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   const breadcrumbs = getBreadcrumbs(pathname)
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 sticky-top-safe">
       <div className="flex items-center justify-between">
-        <div className="flex-1">
-          {/* Breadcrumbs */}
-          <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
+        <div className="flex-1 min-w-0">
+          {/* Breadcrumbs - Hidden on mobile */}
+          <nav className="hidden md:flex items-center space-x-2 text-sm text-gray-500 mb-1">
             {breadcrumbs.map((crumb, index) => (
               <div key={crumb.href} className="flex items-center">
                 {index > 0 && <span className="mx-2">/</span>}
@@ -95,22 +95,37 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           </nav>
           
           {/* Page Title */}
-          <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
+          <h1 className="text-lg md:text-2xl font-bold text-gray-900 truncate">{pageTitle}</h1>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {/* Search */}
-          <div className="relative hidden md:block">
+        <div className="flex items-center space-x-2 md:space-x-4">
+          {/* Search - Desktop only */}
+          <div className="relative hidden lg:block">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
               type="text"
               placeholder="Search..."
-              className="pl-10 w-64"
+              className="pl-10 w-48 xl:w-64"
             />
           </div>
 
+          {/* Mobile Search Button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="lg:hidden touch-target"
+            aria-label="Search"
+          >
+            <Search className="w-5 h-5" />
+          </Button>
+
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative touch-target"
+            aria-label="Notifications"
+          >
             <Bell className="w-5 h-5" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
               3
@@ -118,15 +133,17 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           </Button>
 
           {/* User Profile */}
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-red-700">
+          <div className="flex items-center space-x-2 md:space-x-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-red-100 rounded-full flex items-center justify-center touch-target">
+              <span className="text-sm md:text-base font-medium text-red-700">
                 {user.name?.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-gray-900">{user.name}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-medium text-gray-900 truncate max-w-32">
+                {user.name}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
                 {user.role?.toLowerCase().replace('_', ' ')}
               </p>
             </div>

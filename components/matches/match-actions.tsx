@@ -42,63 +42,79 @@ export function MatchActions({ match }: MatchActionsProps) {
   const [showRejectedDialog, setShowRejectedDialog] = useState(false)
   const [showCompletedDialog, setShowCompletedDialog] = useState(false)
   const [showNotesDialog, setShowNotesDialog] = useState(false)
+  const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleMarkContacted = async () => {
+  const updateMatchStatus = async (status: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Match marked as contacted')
-      setShowContactedDialog(false)
-      window.location.reload()
+      const response = await fetch(`/api/matches/${match.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast.success(data.message || `Match marked as ${status.toLowerCase()}`)
+        window.location.reload()
+      } else {
+        toast.error(data.error || 'Failed to update match')
+      }
     } catch (error) {
+      console.error('Error updating match:', error)
       toast.error('Failed to update match')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleMarkContacted = async () => {
+    await updateMatchStatus('CONTACTED')
+    setShowContactedDialog(false)
   }
 
   const handleMarkAccepted = async () => {
-    setIsLoading(true)
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Match marked as accepted')
-      setShowAcceptedDialog(false)
-      window.location.reload()
-    } catch (error) {
-      toast.error('Failed to update match')
-    } finally {
-      setIsLoading(false)
-    }
+    await updateMatchStatus('ACCEPTED')
+    setShowAcceptedDialog(false)
   }
 
   const handleMarkRejected = async () => {
-    setIsLoading(true)
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Match marked as rejected')
-      setShowRejectedDialog(false)
-      window.location.reload()
-    } catch (error) {
-      toast.error('Failed to update match')
-    } finally {
-      setIsLoading(false)
-    }
+    await updateMatchStatus('REJECTED')
+    setShowRejectedDialog(false)
   }
 
   const handleMarkCompleted = async () => {
+    await updateMatchStatus('COMPLETED')
+    setShowCompletedDialog(false)
+  }
+
+  const handleSaveNotes = async () => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Match marked as completed')
-      setShowCompletedDialog(false)
-      window.location.reload()
+      const response = await fetch(`/api/matches/${match.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: match.status, // Keep current status
+          notes: notes.trim()
+        })
+      })
+
+      const data = await response.json()
+      
+      if (response.ok) {
+        toast.success('Notes saved successfully')
+        setShowNotesDialog(false)
+        setNotes('')
+        window.location.reload()
+      } else {
+        toast.error(data.error || 'Failed to save notes')
+      }
     } catch (error) {
-      toast.error('Failed to update match')
+      console.error('Error saving notes:', error)
+      toast.error('Failed to save notes')
     } finally {
       setIsLoading(false)
     }
@@ -264,17 +280,19 @@ export function MatchActions({ match }: MatchActionsProps) {
               className="w-full p-3 border rounded-md resize-none"
               rows={4}
               placeholder="Enter your notes here..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
             />
           </div>
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowNotesDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={() => {
-              toast.success('Notes added successfully')
-              setShowNotesDialog(false)
-            }}>
-              Save Notes
+            <Button 
+              onClick={handleSaveNotes}
+              disabled={isLoading || !notes.trim()}
+            >
+              {isLoading ? 'Saving...' : 'Save Notes'}
             </Button>
           </div>
         </DialogContent>

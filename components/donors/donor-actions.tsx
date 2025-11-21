@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import {
   Dialog,
@@ -20,10 +21,17 @@ import {
   Eye, 
   UserCheck, 
   Phone,
-  UserX
+  UserX,
+  Shield,
+  FileText,
+  Trash2
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { ContactAccessDialog } from '@/components/privacy/contact-access-dialog'
+import { PrivacySettingsDialog } from '@/components/privacy/privacy-settings-dialog'
+import { AuditTrailDialog } from '@/components/privacy/audit-trail-dialog'
+import { DataDeletionDialog } from '@/components/privacy/data-deletion-dialog'
 
 interface DonorActionsProps {
   donor: {
@@ -38,7 +46,12 @@ export function DonorActions({ donor }: DonorActionsProps) {
   const [showVerifyDialog, setShowVerifyDialog] = useState(false)
   const [showContactDialog, setShowContactDialog] = useState(false)
   const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false)
+  const [showContactAccessDialog, setShowContactAccessDialog] = useState(false)
+  const [showPrivacySettingsDialog, setShowPrivacySettingsDialog] = useState(false)
+  const [showAuditTrailDialog, setShowAuditTrailDialog] = useState(false)
+  const [showDataDeletionDialog, setShowDataDeletionDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [contactData, setContactData] = useState<any>(null)
 
   const handleVerifyDonor = async () => {
     setIsLoading(true)
@@ -74,7 +87,17 @@ export function DonorActions({ donor }: DonorActionsProps) {
   }
 
   const handleContactDonor = () => {
+    setShowContactAccessDialog(true)
+  }
+
+  const handleContactAccessGranted = (data: any) => {
+    setContactData(data)
     setShowContactDialog(true)
+  }
+
+  const handleRefreshData = () => {
+    // In real implementation, you would refresh the data
+    window.location.reload()
   }
 
   return (
@@ -105,6 +128,22 @@ export function DonorActions({ donor }: DonorActionsProps) {
           <DropdownMenuItem onClick={() => setShowAvailabilityDialog(true)}>
             <UserX className="h-4 w-4 mr-2" />
             {donor.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setShowPrivacySettingsDialog(true)}>
+            <Shield className="h-4 w-4 mr-2" />
+            Privacy Settings
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setShowAuditTrailDialog(true)}>
+            <FileText className="h-4 w-4 mr-2" />
+            Audit Trail
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={() => setShowDataDeletionDialog(true)}
+            className="text-red-600"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Request Deletion
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -143,18 +182,32 @@ export function DonorActions({ donor }: DonorActionsProps) {
               Contact options for {donor.name}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-3">
-            <Button className="w-full justify-start" variant="outline">
-              <Phone className="h-4 w-4 mr-2" />
-              Call Donor
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <Phone className="h-4 w-4 mr-2" />
-              Send SMS
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Contact information is protected and only visible to verified staff.
-            </p>
+          <div className="py-4 space-y-4">
+            {contactData && (
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium">Contact Information</h4>
+                {contactData.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span>{contactData.phone}</span>
+                    <Button size="sm" variant="outline">Call</Button>
+                  </div>
+                )}
+                {contactData.email && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span>{contactData.email}</span>
+                    <Button size="sm" variant="outline">Email</Button>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                <Shield className="h-4 w-4 inline mr-1" />
+                This contact access has been logged for audit purposes.
+              </p>
+            </div>
           </div>
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setShowContactDialog(false)}>
@@ -191,6 +244,39 @@ export function DonorActions({ donor }: DonorActionsProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Privacy Dialogs */}
+      <ContactAccessDialog
+        donorId={donor.id}
+        donorName={donor.name}
+        isOpen={showContactAccessDialog}
+        onClose={() => setShowContactAccessDialog(false)}
+        onAccessGranted={handleContactAccessGranted}
+      />
+
+      <PrivacySettingsDialog
+        donorId={donor.id}
+        isOpen={showPrivacySettingsDialog}
+        onClose={() => setShowPrivacySettingsDialog(false)}
+        onUpdate={handleRefreshData}
+      />
+
+      <AuditTrailDialog
+        entityType="donor"
+        entityId={donor.id}
+        entityName={donor.name}
+        isOpen={showAuditTrailDialog}
+        onClose={() => setShowAuditTrailDialog(false)}
+      />
+
+      <DataDeletionDialog
+        donorId={donor.id}
+        donorName={donor.name}
+        isOpen={showDataDeletionDialog}
+        onClose={() => setShowDataDeletionDialog(false)}
+        onDeleted={handleRefreshData}
+        mode="request"
+      />
     </>
   )
 }

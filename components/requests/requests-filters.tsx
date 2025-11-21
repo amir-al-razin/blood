@@ -94,14 +94,14 @@ export function RequestsFilters() {
 
         {/* Status Filter */}
         <Select
-          value={filters.status}
-          onValueChange={(value) => handleFilterChange('status', value)}
+          value={filters.status || "all"}
+          onValueChange={(value) => handleFilterChange('status', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[140px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Statuses</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
             {statuses.map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}
@@ -112,14 +112,14 @@ export function RequestsFilters() {
 
         {/* Blood Type Filter */}
         <Select
-          value={filters.bloodType}
-          onValueChange={(value) => handleFilterChange('bloodType', value)}
+          value={filters.bloodType || "all"}
+          onValueChange={(value) => handleFilterChange('bloodType', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[120px]">
             <SelectValue placeholder="Blood Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem>
             {bloodTypes.map((type) => (
               <SelectItem key={type.value} value={type.value}>
                 {type.label}
@@ -130,14 +130,14 @@ export function RequestsFilters() {
 
         {/* Urgency Filter */}
         <Select
-          value={filters.urgency}
-          onValueChange={(value) => handleFilterChange('urgency', value)}
+          value={filters.urgency || "all"}
+          onValueChange={(value) => handleFilterChange('urgency', value === "all" ? "" : value)}
         >
           <SelectTrigger className="w-full sm:w-[120px]">
             <SelectValue placeholder="Urgency" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Urgency</SelectItem>
+            <SelectItem value="all">All Urgency</SelectItem>
             {urgencyLevels.map((level) => (
               <SelectItem key={level.value} value={level.value}>
                 {level.label}
