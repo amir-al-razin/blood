@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { Bell, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { LanguageSwitcher } from '@/components/language-switcher'
 
 interface User {
   id: string
@@ -79,7 +80,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   const breadcrumbs = getBreadcrumbs(pathname)
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 sticky-top-safe">
+    <header className="bg-white   px-4 md:px-6 py-3 md:py-4 sticky-top-safe">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           {/* Breadcrumbs - Hidden on mobile */}
@@ -118,6 +119,9 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           >
             <Search className="w-5 h-5" />
           </Button>
+
+          {/* Language Switcher */}
+          <LanguageSwitcher />
 
           {/* Notifications */}
           <Button 

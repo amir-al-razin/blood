@@ -89,7 +89,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
   const SidebarContent = () => (
     <>
-      <div className="flex items-center px-6 py-4 border-b">
+      <div className="flex items-center px-6 py-4">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
             <Heart className="w-5 h-5 text-white" />
@@ -113,7 +113,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               className={cn(
                 'flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors',
                 isActive
-                  ? 'bg-red-50 text-red-700 border-r-2 border-red-600'
+                  ? 'bg-red-50 text-red-700'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               )}
               onClick={() => setIsMobileMenuOpen(false)}
@@ -125,7 +125,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         })}
       </nav>
 
-      <div className="border-t px-4 py-4">
+      <div className="px-4 py-4">
         <div className="flex items-center space-x-3 px-3 py-2 mb-3">
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
             <span className="text-sm font-medium text-gray-600">
@@ -185,7 +185,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:bg-white lg:border-r lg:border-gray-200">
+      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:bg-white">
         <SidebarContent />
       </div>
     </>
