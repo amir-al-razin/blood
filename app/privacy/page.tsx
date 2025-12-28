@@ -1,28 +1,27 @@
-import { Metadata } from 'next'
+'use client'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Shield, Lock, Eye, Trash2, FileText, Phone } from 'lucide-react'
-
-export const metadata: Metadata = {
-  title: 'Privacy Policy | RedAid',
-  description: 'Learn how RedAid protects your personal information and respects your privacy'
-}
+import { useTranslations } from '@/lib/i18n'
 
 export default function PrivacyPolicyPage() {
+  const t = useTranslations('privacy')
+  
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <Shield className="h-12 w-12 text-red-600 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Privacy Policy</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">{t('title')}</h1>
           <p className="text-xl text-gray-600">
-            Your privacy is our priority. Learn how we protect your personal information.
+            {t('subtitle')}
           </p>
           <p className="text-sm text-gray-500 mt-2">
-            Last updated: {new Date().toLocaleDateString('en-US', { 
+            {t('lastUpdated')}: {new Date().toLocaleDateString('en-US', { 
               year: 'numeric', 
               month: 'long', 
               day: 'numeric' 
-            })} | Version 1.0
+            })} | {t('version')}
           </p>
         </div>
 
@@ -32,18 +31,12 @@ export default function PrivacyPolicyPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" />
-                Overview
+                {t('overview')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p>
-                RedAid is committed to protecting your privacy and ensuring the security of your personal information. 
-                This Privacy Policy explains how we collect, use, protect, and share your information when you use our 
-                blood donation platform.
-              </p>
-              <p>
-                We understand that blood donation involves sensitive medical and personal information, and we have 
-                implemented comprehensive privacy controls to ensure your data is handled with the utmost care and security.
+                {t('overviewDesc')}
               </p>
             </CardContent>
           </Card>

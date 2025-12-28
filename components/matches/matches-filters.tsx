@@ -1,11 +1,16 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, X } from 'lucide-react'
-import { useState } from 'react'
+import { Search, X, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+
+const matchStatuses = [
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'CONTACTED', label: 'Contacted' },
+  { value: 'ACCEPTED', label: 'Accepted' },
+  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'COMPLETED', label: 'Completed' },
+]
 
 const bloodTypes = [
   { value: 'A_POSITIVE', label: 'A+' },
@@ -18,19 +23,78 @@ const bloodTypes = [
   { value: 'O_NEGATIVE', label: 'O-' },
 ]
 
-const matchStatuses = [
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'CONTACTED', label: 'Contacted' },
-  { value: 'ACCEPTED', label: 'Accepted' },
-  { value: 'REJECTED', label: 'Rejected' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-]
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  value: string
+  options: { value: string, label: string }[]
+  onChange: (value: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedLabel = options.find(o => o.value === value)?.label
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg
+          transition-colors whitespace-nowrap
+          ${value
+            ? 'bg-red-50 text-red-700 hover:bg-red-100'
+            : 'text-gray-600 hover:bg-gray-100'
+          }
+        `}
+      >
+        {selectedLabel || label}
+        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px] py-1">
+          <button
+            onClick={() => { onChange(''); setIsOpen(false) }}
+            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors
+              ${!value ? 'text-red-600 bg-red-50' : 'text-gray-700'}`}
+          >
+            All {label}
+          </button>
+          {options.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => { onChange(option.value); setIsOpen(false) }}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors
+                ${value === option.value ? 'text-red-600 bg-red-50' : 'text-gray-700'}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function MatchesFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   const [filters, setFilters] = useState({
     search: searchParams.get('search') || '',
     status: searchParams.get('status') || '',
@@ -39,17 +103,11 @@ export function MatchesFilters() {
 
   const updateURL = (newFilters: typeof filters) => {
     const params = new URLSearchParams()
-    
     Object.entries(newFilters).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value)
-      }
+      if (value) params.set(key, value)
     })
-
     const queryString = params.toString()
-    const newURL = queryString ? `?${queryString}` : '/dashboard/matches'
-    
-    router.push(newURL)
+    router.push(queryString ? `?${queryString}` : '/dashboard/matches')
   }
 
   const handleFilterChange = (key: string, value: string) => {
@@ -59,106 +117,55 @@ export function MatchesFilters() {
   }
 
   const clearFilters = () => {
-    const clearedFilters = {
-      search: '',
-      status: '',
-      bloodType: '',
-    }
+    const clearedFilters = { search: '', status: '', bloodType: '' }
     setFilters(clearedFilters)
     updateURL(clearedFilters)
   }
 
   const hasActiveFilters = Object.values(filters).some(value => value !== '')
+  const activeCount = Object.values(filters).filter(v => v !== '').length
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Search by donor name, request ID, or hospital..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Status Filter */}
-        <Select
-          value={filters.status || "all"}
-          onValueChange={(value) => handleFilterChange('status', value === "all" ? "" : value)}
-        >
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {matchStatuses.map((status) => (
-              <SelectItem key={status.value} value={status.value}>
-                {status.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Blood Type Filter */}
-        <Select
-          value={filters.bloodType || "all"}
-          onValueChange={(value) => handleFilterChange('bloodType', value === "all" ? "" : value)}
-        >
-          <SelectTrigger className="w-full sm:w-[120px]">
-            <SelectValue placeholder="Blood Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {bloodTypes.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Clear Filters */}
-        {hasActiveFilters && (
-          <Button
-            variant="outline"
-            onClick={clearFilters}
-            className="w-full sm:w-auto"
-          >
-            <X className="w-4 h-4 mr-2" />
-            Clear
-          </Button>
-        )}
+    <div className="flex flex-wrap items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl">
+      <div className="relative flex-1 min-w-[200px]">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search matches..."
+          value={filters.search}
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border-0 rounded-lg 
+                     placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-red-500/20
+                     transition-all outline-none"
+        />
       </div>
 
-      {/* Active Filters Display */}
+      <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
+
+      <div className="flex items-center gap-1">
+        <FilterDropdown
+          label="Status"
+          value={filters.status}
+          options={matchStatuses}
+          onChange={(value) => handleFilterChange('status', value)}
+        />
+        <FilterDropdown
+          label="Blood Type"
+          value={filters.bloodType}
+          options={bloodTypes}
+          onChange={(value) => handleFilterChange('bloodType', value)}
+        />
+      </div>
+
       {hasActiveFilters && (
-        <div className="flex flex-wrap gap-2">
-          {filters.status && (
-            <div className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm">
-              Status: {matchStatuses.find(s => s.value === filters.status)?.label}
-              <button
-                onClick={() => handleFilterChange('status', '')}
-                className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-          {filters.bloodType && (
-            <div className="flex items-center gap-1 bg-red-100 text-red-800 px-2 py-1 rounded-md text-sm">
-              Blood: {bloodTypes.find(t => t.value === filters.bloodType)?.label}
-              <button
-                onClick={() => handleFilterChange('bloodType', '')}
-                className="ml-1 hover:bg-red-200 rounded-full p-0.5"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          onClick={clearFilters}
+          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 
+                     hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+        >
+          <X className="w-3 h-3" />
+          Clear ({activeCount})
+        </button>
       )}
     </div>
   )

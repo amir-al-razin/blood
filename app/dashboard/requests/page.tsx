@@ -2,24 +2,21 @@ import { Suspense } from 'react'
 import { RequestsTable } from '@/components/requests/requests-table'
 import { RequestsFilters } from '@/components/requests/requests-filters'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Plus, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
+import { Clock, AlertTriangle, Activity } from 'lucide-react'
 import { db } from '@/lib/db'
 
 async function getRequestsStats() {
   try {
-    const [total, pending, inProgress, completed, critical] = await Promise.all([
+    const [total, pending, critical] = await Promise.all([
       db.request.count(),
       db.request.count({ where: { status: 'PENDING' } }),
-      db.request.count({ where: { status: 'IN_PROGRESS' } }),
-      db.request.count({ where: { status: 'COMPLETED' } }),
       db.request.count({ where: { urgencyLevel: 'CRITICAL', status: { not: 'COMPLETED' } } })
     ])
 
-    return { total, pending, inProgress, completed, critical }
+    return { total, pending, critical }
   } catch (error) {
     console.error('Error fetching requests stats:', error)
-    return { total: 0, pending: 0, inProgress: 0, completed: 0, critical: 0 }
+    return { total: 0, pending: 0, critical: 0 }
   }
 }
 
@@ -32,87 +29,71 @@ export default async function RequestsPage({
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-            <Plus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+      {/* Simplified Stats - 3 Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Pending</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.pending}</p>
+                <p className="text-xs text-gray-500 mt-1">Need attention</p>
+              </div>
+              <div className="p-2 bg-yellow-50 rounded-full">
+                <Clock className="h-5 w-5 text-yellow-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+        <Card className={`border-l-4 ${stats.critical > 0 ? 'border-l-red-500 bg-red-50/30' : 'border-l-gray-200'}`}>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Critical</p>
+                <p className={`text-3xl font-bold mt-1 ${stats.critical > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                  {stats.critical}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {stats.critical > 0 ? 'Urgent!' : 'All clear'}
+                </p>
+              </div>
+              <div className={`p-2 rounded-full ${stats.critical > 0 ? 'bg-red-100' : 'bg-gray-100'}`}>
+                <AlertTriangle className={`h-5 w-5 ${stats.critical > 0 ? 'text-red-600' : 'text-gray-400'}`} />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Critical</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.critical}</div>
+        <Card className="border-l-4 border-l-gray-300">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Requests</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                <p className="text-xs text-gray-500 mt-1">All time</p>
+              </div>
+              <div className="p-2 bg-gray-100 rounded-full">
+                <Activity className="h-5 w-5 text-gray-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1">
-          <Suspense fallback={<div>Loading filters...</div>}>
-            <RequestsFilters />
-          </Suspense>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            Export
-          </Button>
-          <Button>
-            Create Match
-          </Button>
-        </div>
-      </div>
+      {/* Filters */}
+      <Suspense fallback={<div className="h-10 bg-gray-100 animate-pulse rounded"></div>}>
+        <RequestsFilters />
+      </Suspense>
 
       {/* Requests Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Blood Requests</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<div>Loading requests...</div>}>
-            <RequestsTable searchParams={searchParams} />
-          </Suspense>
-        </CardContent>
-      </Card>
+      <Suspense fallback={
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
+          Loading requests...
+        </div>
+      }>
+        <RequestsTable searchParams={searchParams} />
+      </Suspense>
     </div>
   )
 }

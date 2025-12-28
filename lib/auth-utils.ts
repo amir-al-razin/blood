@@ -1,121 +1,83 @@
-import bcrypt from 'bcryptjs'
-import { auth } from './auth'
+// Server-side admin auth utilities
+// Cookie-based authentication for Firebase admin system
+
+import { cookies } from 'next/headers'
 import { db } from './db'
-import { PasswordSecurity } from './password-security'
-import { securityLogger } from './security-logger'
+import { Role } from '@prisma/client'
 
-// Enhanced password utilities with security features
-export const passwordUtils = {
-  async hash(password: string): Promise<string> {
-    return await PasswordSecurity.hashPassword(password)
-  },
-
-  async verify(password: string, hashedPassword: string): Promise<boolean> {
-    return await PasswordSecurity.verifyPassword(password, hashedPassword)
-  },
-
-  validate(password: string, userInfo?: { name?: string; email?: string; phone?: string }) {
-    return PasswordSecurity.validatePassword(password, userInfo)
-  },
-
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    return await PasswordSecurity.changePassword(userId, currentPassword, newPassword)
-  },
-
-  async isExpired(userId: string): Promise<boolean> {
-    return await PasswordSecurity.isPasswordExpired(userId)
-  },
-
-  generateSecure(length: number = 16): string {
-    return PasswordSecurity.generateSecurePassword(length)
+export interface AdminSession {
+  user: {
+    id: string
+    name: string
+    email: string
+    role: Role
   }
 }
 
-// Enhanced session utilities with security logging
-export const sessionUtils = {
-  async getCurrentUser() {
-    const session = await auth()
-    
-    if (!session?.user?.id) {
-      return null
-    }
+/**
+ * Get admin session from cookie (for use in Server Components)
+ * Replaces the old NextAuth `auth()` function
+ */
+export async function getAdminSession(): Promise<AdminSession | null> {
+  const cookieStore = await cookies()
+  const adminSessionCookie = cookieStore.get('admin_session')
 
+  if (!adminSessionCookie?.value) {
+    return null
+  }
+
+  try {
+    // Decode base64 cookie value
+    const decoded = atob(adminSessionCookie.value)
+    const { userId } = JSON.parse(decoded)
+
+    // Look up user in database to get full details
     const user = await db.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: {
         id: true,
-        email: true,
         name: true,
-        role: true,
-        phone: true,
-        isActive: true,
-        isLocked: true,
-        lockedUntil: true,
-        twoFactorEnabled: true,
-        passwordChangedAt: true
+        email: true,
+        role: true
       }
     })
 
-    // Check if account is locked
-    if (user && await PasswordSecurity.isAccountLocked(user.id)) {
-      await securityLogger.logEvent({
-        type: 'UNAUTHORIZED_ACCESS',
-        severity: 'HIGH',
-        description: 'Attempt to access with locked account',
-        userId: user.id,
-        metadata: { lockedUntil: user.lockedUntil }
-      })
-      return null
+    if (!user) return null
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     }
+  } catch (error) {
+    console.error('Error reading admin session:', error)
+    return null
+  }
+}
 
-    return user
-  },
+/**
+ * Alias for getAdminSession for backward compatibility
+ * Use this in place of the old `auth()` function
+ */
+export async function auth(): Promise<AdminSession | null> {
+  return getAdminSession()
+}
 
-  async requireAuth() {
-    const user = await this.getCurrentUser()
-    
-    if (!user) {
-      throw new Error('Authentication required')
-    }
+/**
+ * Helper to get admin from cookie in API routes
+ * Reads cookie value directly (not using next/headers)
+ */
+export function getAdminFromCookieValue(cookieValue: string | undefined): { userId: string; role: string } | null {
+  if (!cookieValue) return null
 
-    if (!user.isActive) {
-      await securityLogger.logEvent({
-        type: 'UNAUTHORIZED_ACCESS',
-        severity: 'MEDIUM',
-        description: 'Attempt to access with inactive account',
-        userId: user.id
-      })
-      throw new Error('Account is inactive')
-    }
-
-    return user
-  },
-
-  async requireRole(allowedRoles: string[]) {
-    const user = await this.requireAuth()
-    
-    if (!allowedRoles.includes(user.role)) {
-      await securityLogger.logUnauthorizedAccess(
-        `Role-based access denied. Required: ${allowedRoles.join(', ')}, User has: ${user.role}`,
-        user.id
-      )
-      throw new Error('Insufficient permissions')
-    }
-
-    return user
-  },
-
-  async require2FA(userId: string) {
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { twoFactorEnabled: true }
-    })
-
-    if (!user?.twoFactorEnabled) {
-      throw new Error('Two-factor authentication required')
-    }
-
-    return true
+  try {
+    const decoded = atob(cookieValue)
+    return JSON.parse(decoded)
+  } catch {
+    return null
   }
 }
 
@@ -142,140 +104,36 @@ export const roleUtils = {
   }
 }
 
-// Enhanced user management utilities with security features
-export const userUtils = {
-  async createUser(data: {
-    email: string
-    password: string
-    name: string
-    role: 'SUPER_ADMIN' | 'STAFF' | 'VIEWER'
-    phone?: string
-  }) {
-    // Validate password strength
-    const validation = passwordUtils.validate(data.password, {
-      name: data.name,
-      email: data.email,
-      phone: data.phone
-    })
+// Session utilities for backward compatibility
+// Used by API routes that need to check authentication and roles
+export const sessionUtils = {
+  async getCurrentUser() {
+    const session = await getAdminSession()
 
-    if (!validation.isValid) {
-      throw new Error(`Password validation failed: ${validation.errors.join(', ')}`)
+    if (!session?.user) {
+      return null
     }
 
-    const hashedPassword = await passwordUtils.hash(data.password)
-    
-    const user = await db.user.create({
-      data: {
-        ...data,
-        password: hashedPassword,
-        passwordChangedAt: new Date()
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        phone: true,
-        isActive: true,
-        createdAt: true
-      }
-    })
-
-    // Log user creation
-    await securityLogger.logEvent({
-      type: 'SUSPICIOUS_ACTIVITY',
-      severity: 'MEDIUM',
-      description: `New user created: ${data.email} with role ${data.role}`,
-      metadata: { 
-        newUserId: user.id,
-        email: data.email,
-        role: data.role
-      }
-    })
-
-    return user
+    return session.user
   },
 
-  async updatePassword(userId: string, newPassword: string, adminId?: string) {
-    // Get user info for validation
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { name: true, email: true, phone: true }
-    })
+  async requireAuth() {
+    const user = await this.getCurrentUser()
 
     if (!user) {
-      throw new Error('User not found')
+      throw new Error('Authentication required')
     }
-
-    // Validate new password
-    const validation = passwordUtils.validate(newPassword, user)
-    if (!validation.isValid) {
-      throw new Error(`Password validation failed: ${validation.errors.join(', ')}`)
-    }
-
-    const hashedPassword = await passwordUtils.hash(newPassword)
-    
-    const updatedUser = await db.user.update({
-      where: { id: userId },
-      data: { 
-        password: hashedPassword,
-        passwordChangedAt: new Date(),
-        // Reset lockout if password is changed by admin
-        ...(adminId && { isLocked: false, lockedUntil: null })
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true
-      }
-    })
-
-    // Log password change
-    await securityLogger.logEvent({
-      type: 'SUSPICIOUS_ACTIVITY',
-      severity: 'MEDIUM',
-      description: adminId ? 'Password reset by admin' : 'Password changed by user',
-      userId: adminId || userId,
-      metadata: { 
-        targetUserId: userId,
-        isAdminReset: !!adminId
-      }
-    })
-
-    return updatedUser
-  },
-
-  async deactivateUser(userId: string, adminId: string) {
-    const user = await db.user.update({
-      where: { id: userId },
-      data: { isActive: false }
-    })
-
-    // Log user deactivation
-    await securityLogger.logEvent({
-      type: 'SUSPICIOUS_ACTIVITY',
-      severity: 'MEDIUM',
-      description: 'User account deactivated',
-      userId: adminId,
-      metadata: { deactivatedUserId: userId }
-    })
 
     return user
   },
 
-  async setup2FA(userId: string) {
-    return await PasswordSecurity.setupTwoFactor(userId, 'RedAid')
-  },
+  async requireRole(allowedRoles: string[]) {
+    const user = await this.requireAuth()
 
-  async verify2FA(userId: string, token: string) {
-    return await PasswordSecurity.verifyAndEnable2FA(userId, token)
-  },
+    if (!allowedRoles.includes(user.role)) {
+      throw new Error('Insufficient permissions')
+    }
 
-  async disable2FA(userId: string, password: string) {
-    return await PasswordSecurity.disable2FA(userId, password)
-  },
-
-  async unlockAccount(userId: string, adminId: string) {
-    await PasswordSecurity.unlockAccount(userId, adminId)
+    return user
   }
 }

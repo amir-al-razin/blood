@@ -11,13 +11,14 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(cuid())
-  email    String  @unique
-  password String // Hashed with bcrypt
-  role     Role    @default(STAFF)
-  name     String
-  phone    String?
-  isActive Boolean @default(true)
+  id          String  @id @default(cuid())
+  firebaseUid String? @unique // Link to Firebase Auth
+  email       String  @unique
+  password    String // Hashed with bcrypt (fallback for non-Firebase auth)
+  role        Role    @default(STAFF)
+  name        String
+  phone       String?
+  isActive    Boolean @default(true)
 
   // Security fields
   isLocked          Boolean   @default(false)
@@ -48,8 +49,36 @@ model User {
   @@map("users")
 }
 
+// Public users (donors, requesters)
+model Member {
+  id          String  @id @default(cuid())
+  firebaseUid String  @unique // Firebase Auth UID
+  email       String  @unique
+  phone       String  @unique // Required - Bangladeshi mobile
+  name        String
+  image       String? // Profile image from OAuth
+
+  // Verification status
+  isPhoneVerified Boolean @default(false) // Admin manually verifies
+  isEmailVerified Boolean @default(false)
+  isActive        Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  donor    Donor? // One-to-one with donor profile (if they become a donor)
+  requests Request[] // Blood requests made by this member
+
+  @@index([firebaseUid])
+  @@index([phone])
+  @@map("members")
+}
+
 model Donor {
   id               String    @id @default(cuid())
+  memberId         String?   @unique // Link to Member account (optional for legacy donors)
   name             String
   phone            String    @unique
   email            String?
@@ -63,6 +92,8 @@ model Donor {
   lastDonation     DateTime?
   isAvailable      Boolean   @default(true)
   isVerified       Boolean   @default(false)
+  verifiedAt       DateTime? // When admin verified
+  verifiedBy       String?   // Admin user ID who verified
   donationCount    Int       @default(0)
   reliabilityScore Float     @default(0.0)
   notes            String?
@@ -82,16 +113,19 @@ model Donor {
   updatedAt DateTime @updatedAt
 
   // Relations
+  member          Member?               @relation(fields: [memberId], references: [id])
   matches         Match[]
   privacySettings DonorPrivacySettings?
 
   @@index([bloodType, isAvailable, isVerified])
   @@index([area])
+  @@index([memberId])
   @@map("donors")
 }
 
 model Request {
   id              String        @id @default(cuid())
+  memberId        String?       // Link to Member who made request (optional for anonymous)
   referenceId     String        @unique @default(cuid())
   requesterName   String
   requesterPhone  String
@@ -110,10 +144,12 @@ model Request {
   updatedAt       DateTime      @updatedAt
 
   // Relations
+  member  Member? @relation(fields: [memberId], references: [id])
   matches Match[]
 
   @@index([status, urgencyLevel])
   @@index([bloodType])
+  @@index([memberId])
   @@map("requests")
 }
 
@@ -409,4 +445,26 @@ enum SecurityEventSeverity {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  subject   String
+  message   String   @db.Text
+  ipAddress String?
+  userAgent String?
+  isRead    Boolean  @default(false)
+  replied   Boolean  @default(false)
+  replyNote String?  @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("contact_messages")
 }

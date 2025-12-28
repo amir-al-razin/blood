@@ -1,17 +1,23 @@
+'use client'
+
 import { Heart, Users, MapPin, Clock } from 'lucide-react'
+import { useTranslations } from '@/lib/i18n'
 
 export function StatsSection() {
+  const t = useTranslations('pages')
+  const tCommon = useTranslations('common')
+
   const stats = [
     {
       icon: Users,
       value: '1,247',
-      label: 'Registered Donors',
+      label: t('home.stats.donors'),
       description: 'Verified blood donors ready to help'
     },
     {
       icon: Heart,
       value: '3,891',
-      label: 'Lives Saved',
+      label: t('home.stats.lives'),
       description: 'Successful blood donations completed'
     },
     {
@@ -34,11 +40,10 @@ export function StatsSection() {
         {/* Section Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Making a Real Impact
+            {t('home.stats.title')}
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Our platform has connected thousands of donors with patients in need, 
-            creating a network of hope and healing across the country.
+            {t('home.stats.description')}
           </p>
         </div>
 
@@ -68,7 +73,7 @@ export function StatsSection() {
         {/* Blood Type Availability */}
         <div className="mt-16 bg-gray-50 rounded-2xl p-8">
           <h3 className="text-2xl font-bold text-gray-900 text-center mb-8">
-            Blood Type Availability
+            {t('home.bloodTypeAvailability')}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
             {[
@@ -93,7 +98,7 @@ export function StatsSection() {
                     ? 'bg-green-100 text-green-800' 
                     : 'bg-yellow-100 text-yellow-800'
                 }`}>
-                  {blood.available ? 'Available' : 'Limited'}
+                  {blood.available ? tCommon('active') : 'Limited'}
                 </div>
               </div>
             ))}

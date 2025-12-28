@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { 
+import { Badge } from '@/components/ui/badge'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import {
   Dialog,
@@ -15,44 +17,69 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { 
-  MoreHorizontal, 
-  Eye, 
-  UserPlus, 
-  CheckCircle, 
-  XCircle 
+import {
+  MoreHorizontal,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Phone,
+  Mail,
+  MapPin,
+  Building,
+  Droplets,
+  Clock,
+  AlertTriangle,
+  FileText
 } from 'lucide-react'
-import Link from 'next/link'
 import { toast } from 'sonner'
+import { format } from 'date-fns'
 
 interface RequestActionsProps {
   request: {
     id: string
-    status: string
     referenceId: string
     requesterName: string
+    requesterPhone: string
+    requesterEmail?: string | null
+    bloodType: string
+    unitsRequired: number
+    urgencyLevel: string
+    hospital: string
+    location: string
+    patientName?: string | null
+    patientAge?: number | null
+    patientRelation?: string | null
+    reason?: string | null
+    notes?: string | null
+    status: string
+    createdAt: Date | string
+    matches?: any[]
   }
 }
 
 export function RequestActions({ request }: RequestActionsProps) {
-  const [showAssignDialog, setShowAssignDialog] = useState(false)
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false)
   const [showCompleteDialog, setShowCompleteDialog] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [showInProgressDialog, setShowInProgressDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleAssignDonor = () => {
-    setShowAssignDialog(true)
-  }
-
-  const handleMarkComplete = async () => {
+  const updateStatus = async (status: string, successMessage: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Request marked as completed')
-      setShowCompleteDialog(false)
-      // In real implementation, you would refresh the data
-      window.location.reload()
+      const response = await fetch(`/api/admin/requests/${request.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+
+      if (response.ok) {
+        toast.success(successMessage)
+        window.location.reload()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to update request')
+      }
     } catch (error) {
       toast.error('Failed to update request')
     } finally {
@@ -60,19 +87,32 @@ export function RequestActions({ request }: RequestActionsProps) {
     }
   }
 
-  const handleCancelRequest = async () => {
-    setIsLoading(true)
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Request cancelled')
-      setShowCancelDialog(false)
-      // In real implementation, you would refresh the data
-      window.location.reload()
-    } catch (error) {
-      toast.error('Failed to cancel request')
-    } finally {
-      setIsLoading(false)
+  const formatBloodType = (type: string) =>
+    type.replace('_POSITIVE', '+').replace('_NEGATIVE', '-')
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
+      case 'IN_PROGRESS':
+        return <Badge className="bg-blue-100 text-blue-800">In Progress</Badge>
+      case 'COMPLETED':
+        return <Badge className="bg-green-100 text-green-800">Completed</Badge>
+      case 'CANCELLED':
+        return <Badge className="bg-gray-100 text-gray-600">Cancelled</Badge>
+      default:
+        return <Badge>{status}</Badge>
+    }
+  }
+
+  const getUrgencyBadge = (urgency: string) => {
+    switch (urgency) {
+      case 'CRITICAL':
+        return <Badge className="bg-red-500 text-white"><AlertTriangle className="h-3 w-3 mr-1" />Critical</Badge>
+      case 'URGENT':
+        return <Badge className="bg-orange-100 text-orange-700"><Clock className="h-3 w-3 mr-1" />Urgent</Badge>
+      default:
+        return <Badge className="bg-gray-100 text-gray-600">Normal</Badge>
     }
   }
 
@@ -85,26 +125,25 @@ export function RequestActions({ request }: RequestActionsProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link href={`/dashboard/requests/${request.id}`}>
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Link>
+          <DropdownMenuItem onClick={() => setShowDetailsDialog(true)}>
+            <Eye className="h-4 w-4 mr-2" />
+            View Details
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
           {request.status === 'PENDING' && (
-            <DropdownMenuItem onClick={handleAssignDonor}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Assign Donor
+            <DropdownMenuItem onClick={() => setShowInProgressDialog(true)}>
+              <Clock className="h-4 w-4 mr-2" />
+              Start Processing
             </DropdownMenuItem>
           )}
-          {request.status === 'IN_PROGRESS' && (
+          {(request.status === 'PENDING' || request.status === 'IN_PROGRESS') && (
             <DropdownMenuItem onClick={() => setShowCompleteDialog(true)}>
               <CheckCircle className="h-4 w-4 mr-2" />
               Mark Complete
             </DropdownMenuItem>
           )}
           {request.status !== 'COMPLETED' && request.status !== 'CANCELLED' && (
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-red-600"
               onClick={() => setShowCancelDialog(true)}
             >
@@ -115,32 +154,149 @@ export function RequestActions({ request }: RequestActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Assign Donor Dialog */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+      {/* View Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Request #{request.referenceId.slice(-8).toUpperCase()}
+              <Badge variant="outline" className="font-mono text-red-600 border-red-600">
+                {formatBloodType(request.bloodType)}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="flex gap-2 flex-wrap">
+              {getStatusBadge(request.status)}
+              {getUrgencyBadge(request.urgencyLevel)}
+              <Badge variant="outline">{request.unitsRequired} units</Badge>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Requester Info */}
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <h4 className="font-medium text-sm text-gray-500">Requester</h4>
+              <div className="font-medium">{request.requesterName}</div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-gray-400" />
+                <span>{request.requesterPhone}</span>
+                <a href={`tel:${request.requesterPhone}`} className="ml-auto">
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7">Call</Button>
+                </a>
+              </div>
+              {request.requesterEmail && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm">{request.requesterEmail}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Location */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-gray-500">Hospital:</span>
+                <p className="font-medium">{request.hospital}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Location:</span>
+                <p className="font-medium">{request.location}</p>
+              </div>
+            </div>
+
+            {/* Patient Info */}
+            {(request.patientName || request.patientAge || request.patientRelation) && (
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                {request.patientName && (
+                  <div>
+                    <span className="text-gray-500">Patient:</span>
+                    <p className="font-medium">{request.patientName}</p>
+                  </div>
+                )}
+                {request.patientAge && (
+                  <div>
+                    <span className="text-gray-500">Age:</span>
+                    <p className="font-medium">{request.patientAge}</p>
+                  </div>
+                )}
+                {request.patientRelation && (
+                  <div>
+                    <span className="text-gray-500">Relation:</span>
+                    <p className="font-medium">{request.patientRelation}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Reason */}
+            {request.reason && (
+              <div className="text-sm">
+                <span className="text-gray-500">Reason:</span>
+                <p className="font-medium">{request.reason}</p>
+              </div>
+            )}
+
+            {/* Notes */}
+            {request.notes && (
+              <div className="text-sm">
+                <span className="text-gray-500">Notes:</span>
+                <p className="font-medium">{request.notes}</p>
+              </div>
+            )}
+
+            {/* Matches */}
+            {request.matches && request.matches.length > 0 && (
+              <div className="text-sm">
+                <span className="text-gray-500">Matched Donors: {request.matches.length}</span>
+              </div>
+            )}
+
+            {/* Created */}
+            <div className="text-xs text-gray-500 pt-2 border-t">
+              Created: {format(new Date(request.createdAt), 'MMM d, yyyy h:mm a')}
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-2">
+            {request.status === 'PENDING' && (
+              <Button onClick={() => { setShowDetailsDialog(false); setShowInProgressDialog(true); }} className="bg-blue-600 hover:bg-blue-700">
+                <Clock className="h-4 w-4 mr-1" />
+                Start Processing
+              </Button>
+            )}
+            {request.status === 'IN_PROGRESS' && (
+              <Button onClick={() => { setShowDetailsDialog(false); setShowCompleteDialog(true); }} className="bg-green-600 hover:bg-green-700">
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Complete
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setShowDetailsDialog(false)} className="ml-auto">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Start Processing Dialog */}
+      <Dialog open={showInProgressDialog} onOpenChange={setShowInProgressDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Donor</DialogTitle>
+            <DialogTitle>Start Processing Request</DialogTitle>
             <DialogDescription>
-              This feature will allow you to search and assign compatible donors to this request.
+              Mark request #{request.referenceId.slice(-8)} as in progress?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              The donor assignment interface will include:
+            <p className="text-sm text-gray-600">
+              This indicates you've contacted the requester and are working on finding donors.
             </p>
-            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-              <li>• Search donors by blood type and location</li>
-              <li>• Check donor availability and eligibility</li>
-              <li>• Create match and send notifications</li>
-            </ul>
           </div>
           <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
+            <Button variant="outline" onClick={() => setShowInProgressDialog(false)}>
               Cancel
             </Button>
-            <Link href="/dashboard/matches">
-              <Button>Go to Matches</Button>
-            </Link>
+            <Button onClick={() => updateStatus('IN_PROGRESS', 'Request marked as in progress')} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+              {isLoading ? 'Updating...' : 'Start Processing'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -151,19 +307,19 @@ export function RequestActions({ request }: RequestActionsProps) {
           <DialogHeader>
             <DialogTitle>Mark Request as Completed</DialogTitle>
             <DialogDescription>
-              Are you sure you want to mark request #{request.referenceId.slice(-8)} as completed?
+              Mark request #{request.referenceId.slice(-8)} as completed?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              This action will update the request status to completed and cannot be undone.
+            <p className="text-sm text-gray-600">
+              This means blood was successfully provided to the patient.
             </p>
           </div>
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleMarkComplete} disabled={isLoading}>
+            <Button onClick={() => updateStatus('COMPLETED', 'Request marked as completed')} disabled={isLoading} className="bg-green-600 hover:bg-green-700">
               {isLoading ? 'Updating...' : 'Mark Complete'}
             </Button>
           </div>
@@ -176,19 +332,19 @@ export function RequestActions({ request }: RequestActionsProps) {
           <DialogHeader>
             <DialogTitle>Cancel Request</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel request #{request.referenceId.slice(-8)}?
+              Cancel request #{request.referenceId.slice(-8)}?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              This action will cancel the request and cannot be undone.
+            <p className="text-sm text-gray-600">
+              This action cannot be undone. Use this if the request is no longer needed.
             </p>
           </div>
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
-              Cancel
+              Keep Request
             </Button>
-            <Button variant="destructive" onClick={handleCancelRequest} disabled={isLoading}>
+            <Button variant="destructive" onClick={() => updateStatus('CANCELLED', 'Request cancelled')} disabled={isLoading}>
               {isLoading ? 'Cancelling...' : 'Cancel Request'}
             </Button>
           </div>

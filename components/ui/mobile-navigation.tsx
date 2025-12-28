@@ -7,12 +7,12 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
 import { triggerHapticFeedback } from '@/lib/mobile-utils'
-import { 
-  Menu, 
-  X, 
-  Home, 
-  Heart, 
-  Users, 
+import {
+  Menu,
+  X,
+  Home,
+  Heart,
+  Users,
   Phone,
   ChevronRight,
   ArrowLeft
@@ -154,7 +154,7 @@ export function MobileNavigation({ items, className }: MobileNavigationProps) {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
-              
+
               {items
                 .find(item => item.name === activeSubmenu)
                 ?.children?.map((child) => (
@@ -234,16 +234,6 @@ export function MobileNavigation({ items, className }: MobileNavigationProps) {
               ))}
             </div>
           )}
-        </div>
-
-        {/* Footer Actions */}
-        <div className="border-t p-4 space-y-2">
-          <Button className="w-full bg-red-600 hover:bg-red-700 min-h-[48px]" asChild>
-            <Link href="/donate">Become a Donor</Link>
-          </Button>
-          <Button variant="outline" className="w-full min-h-[48px]" asChild>
-            <Link href="/request">Need Blood</Link>
-          </Button>
         </div>
       </div>
     </>

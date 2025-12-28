@@ -1,14 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { 
-  LayoutDashboard, 
-  Heart, 
-  Users, 
-  UserCheck, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Heart,
+  Users,
+  UserCheck,
+  BarChart3,
   Settings,
   Shield,
   LogOut,
@@ -16,7 +16,7 @@ import {
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { signOut } from 'next-auth/react'
+import { signOutUser } from '@/lib/firebase-auth'
 import { useState } from 'react'
 
 interface User {
@@ -54,42 +54,30 @@ const navigation = [
     href: '/dashboard/matches',
     icon: UserCheck,
     roles: ['SUPER_ADMIN', 'STAFF', 'VIEWER']
-  },
-  {
-    name: 'Analytics',
-    href: '/dashboard/analytics',
-    icon: BarChart3,
-    roles: ['SUPER_ADMIN', 'STAFF']
-  },
-  {
-    name: 'Privacy',
-    href: '/dashboard/privacy',
-    icon: Shield,
-    roles: ['SUPER_ADMIN', 'STAFF']
-  },
-  {
-    name: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
-    roles: ['SUPER_ADMIN']
   }
 ]
 
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  const filteredNavigation = navigation.filter(item => 
+  const filteredNavigation = navigation.filter(item =>
     item.roles.includes(user.role as string)
   )
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: '/' })
+  const handleSignOut = async () => {
+    // Sign out from Firebase
+    await signOutUser()
+    // Clear admin session cookie via API
+    await fetch('/api/admin/verify-session', { method: 'DELETE' })
+    // Redirect to home
+    window.location.href = '/'
   }
 
   const SidebarContent = () => (
     <>
-      <div className="flex items-center px-6 py-4 border-b">
+      <div className="flex items-center px-6 py-4">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
             <Heart className="w-5 h-5 text-white" />
@@ -103,9 +91,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
       <nav className="flex-1 px-4 py-6 space-y-2">
         {filteredNavigation.map((item) => {
-          const isActive = pathname === item.href || 
+          const isActive = pathname === item.href ||
             (item.href !== '/dashboard' && pathname.startsWith(item.href))
-          
+
           return (
             <Link
               key={item.name}
@@ -113,7 +101,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
               className={cn(
                 'flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors',
                 isActive
-                  ? 'bg-red-50 text-red-700 border-r-2 border-red-600'
+                  ? 'bg-red-50 text-red-700'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               )}
               onClick={() => setIsMobileMenuOpen(false)}
@@ -125,7 +113,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         })}
       </nav>
 
-      <div className="border-t px-4 py-4">
+      <div className="px-4 py-4">
         <div className="flex items-center space-x-3 px-3 py-2 mb-3">
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
             <span className="text-sm font-medium text-gray-600">
@@ -174,7 +162,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       {/* Mobile sidebar */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50"
             onClick={() => setIsMobileMenuOpen(false)}
           />
@@ -185,7 +173,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:bg-white lg:border-r lg:border-gray-200">
+      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:bg-white">
         <SidebarContent />
       </div>
     </>
