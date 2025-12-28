@@ -3,12 +3,12 @@ import { db } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Calendar, 
+import {
+  ArrowLeft,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
   User,
   Heart,
   Star,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { format, formatDistanceToNow } from 'date-fns'
+import { DonorQuickActions } from '@/components/donors/donor-quick-actions'
 
 async function getDonorDetails(id: string) {
   try {
@@ -102,9 +103,8 @@ const getReliabilityStars = (score: number) => {
       {Array.from({ length: 5 }, (_, i) => (
         <Star
           key={i}
-          className={`w-4 h-4 ${
-            i < stars ? 'text-yellow-400 fill-current' : 'text-gray-300'
-          }`}
+          className={`w-4 h-4 ${i < stars ? 'text-yellow-400 fill-current' : 'text-gray-300'
+            }`}
         />
       ))}
       <span className="ml-2 text-sm text-muted-foreground">
@@ -126,7 +126,7 @@ export default async function DonorDetailPage({
   }
 
   const completedDonations = donor.matches.filter(match => match.status === 'COMPLETED').length
-  const nextEligibleDate = donor.lastDonation 
+  const nextEligibleDate = donor.lastDonation
     ? new Date(donor.lastDonation.getTime() + (donor.gender === 'MALE' ? 90 : 120) * 24 * 60 * 60 * 1000)
     : null
 
@@ -263,7 +263,7 @@ export default async function DonorDetailPage({
                   <div className="mt-1">{getReliabilityStars(donor.reliabilityScore)}</div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Last Donation</label>
@@ -287,7 +287,7 @@ export default async function DonorDetailPage({
                       <div>
                         <div>{format(nextEligibleDate, 'MMM dd, yyyy')}</div>
                         <div className="text-sm text-muted-foreground">
-                          {nextEligibleDate > new Date() 
+                          {nextEligibleDate > new Date()
                             ? `In ${formatDistanceToNow(nextEligibleDate)}`
                             : 'Eligible now'
                           }
@@ -321,23 +321,15 @@ export default async function DonorDetailPage({
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {!donor.isVerified && (
-                <Button className="w-full">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Verify Donor
-                </Button>
-              )}
-              <Button variant="outline" className="w-full">
-                <Phone className="h-4 w-4 mr-2" />
-                Contact Donor
-              </Button>
-              <Button variant="outline" className="w-full">
-                Edit Profile
-              </Button>
-              <Button variant="outline" className="w-full">
-                {donor.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
-              </Button>
+            <CardContent>
+              <DonorQuickActions donor={{
+                id: donor.id,
+                name: donor.name,
+                phone: donor.phone,
+                email: donor.email,
+                isVerified: donor.isVerified,
+                isAvailable: donor.isAvailable
+              }} />
             </CardContent>
           </Card>
 
@@ -362,7 +354,7 @@ export default async function DonorDetailPage({
                   </div>
                 </div>
               </div>
-              
+
               {donor.isVerified && (
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
@@ -401,7 +393,7 @@ export default async function DonorDetailPage({
                         {match.request.requesterName} • {match.request.hospital}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {format(new Date(match.createdAt), 'MMM dd, yyyy')} • 
+                        {format(new Date(match.createdAt), 'MMM dd, yyyy')} •
                         {match.request.urgencyLevel.toLowerCase()} priority
                       </div>
                     </div>

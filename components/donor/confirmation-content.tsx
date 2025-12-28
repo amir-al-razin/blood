@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle, Phone, Mail, Clock, Heart, Shield, Users } from 'lucide-react'
+import { useTranslations } from '@/lib/i18n'
 
 export function DonorConfirmationContent() {
+  const t = useTranslations('confirmation')
+  const tCommon = useTranslations('common')
   const searchParams = useSearchParams()
   const donorId = searchParams.get('id')
 
@@ -16,9 +19,9 @@ export function DonorConfirmationContent() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card>
             <CardContent className="text-center py-12">
-              <p className="text-gray-600">Invalid confirmation link.</p>
+              <p className="text-gray-600">{t('invalidLink')}</p>
               <Button asChild className="mt-4">
-                <Link href="/donate">Register as Donor</Link>
+                <Link href="/donate">{t('backDonor')}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -37,11 +40,10 @@ export function DonorConfirmationContent() {
               <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
             <CardTitle className="text-2xl text-green-600">
-              Registration Successful!
+              {t('donorConfirmation')}
             </CardTitle>
             <CardDescription className="text-lg">
-              Welcome to the RedAid donor community! Your registration has been submitted.
-            </CardDescription>
+              {tCommon('welcome')} RedAid {tCommon('donors')} {t('community')}!
           </CardHeader>
           <CardContent className="text-center">
             <div className="bg-red-50 p-6 rounded-lg mb-6">

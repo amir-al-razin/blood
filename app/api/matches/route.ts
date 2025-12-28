@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { matchUtils, auditUtils } from '@/lib/db-utils'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/auth-utils'
 
 const createMatchSchema = z.object({
   donorId: z.string().min(1),
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       if (daysSinceLastDonation < requiredGap) {
         const nextEligibleDate = new Date(donor.lastDonation.getTime() + requiredGap * 24 * 60 * 60 * 1000)
         return NextResponse.json(
-          { 
+          {
             error: 'Donor is not eligible yet',
             nextEligibleDate: nextEligibleDate.toISOString()
           },

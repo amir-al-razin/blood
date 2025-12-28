@@ -1,14 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { 
-  LayoutDashboard, 
-  Heart, 
-  Users, 
-  UserCheck, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Heart,
+  Users,
+  UserCheck,
+  BarChart3,
   Settings,
   Shield,
   LogOut,
@@ -16,7 +16,7 @@ import {
   X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { signOut } from 'next-auth/react'
+import { signOutUser } from '@/lib/firebase-auth'
 import { useState } from 'react'
 
 interface User {
@@ -54,37 +54,25 @@ const navigation = [
     href: '/dashboard/matches',
     icon: UserCheck,
     roles: ['SUPER_ADMIN', 'STAFF', 'VIEWER']
-  },
-  {
-    name: 'Analytics',
-    href: '/dashboard/analytics',
-    icon: BarChart3,
-    roles: ['SUPER_ADMIN', 'STAFF']
-  },
-  {
-    name: 'Privacy',
-    href: '/dashboard/privacy',
-    icon: Shield,
-    roles: ['SUPER_ADMIN', 'STAFF']
-  },
-  {
-    name: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
-    roles: ['SUPER_ADMIN']
   }
 ]
 
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  const filteredNavigation = navigation.filter(item => 
+  const filteredNavigation = navigation.filter(item =>
     item.roles.includes(user.role as string)
   )
 
-  const handleSignOut = () => {
-    signOut({ callbackUrl: '/' })
+  const handleSignOut = async () => {
+    // Sign out from Firebase
+    await signOutUser()
+    // Clear admin session cookie via API
+    await fetch('/api/admin/verify-session', { method: 'DELETE' })
+    // Redirect to home
+    window.location.href = '/'
   }
 
   const SidebarContent = () => (
@@ -103,9 +91,9 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
 
       <nav className="flex-1 px-4 py-6 space-y-2">
         {filteredNavigation.map((item) => {
-          const isActive = pathname === item.href || 
+          const isActive = pathname === item.href ||
             (item.href !== '/dashboard' && pathname.startsWith(item.href))
-          
+
           return (
             <Link
               key={item.name}
@@ -174,7 +162,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       {/* Mobile sidebar */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50"
             onClick={() => setIsMobileMenuOpen(false)}
           />

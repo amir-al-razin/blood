@@ -1,0 +1,314 @@
+{
+  "home": {
+    "title": "Blood Donation Network",
+    "subtitle": "Connect donors with recipients in need",
+    "heroTitle": "Save Lives Through Blood Donation",
+    "heroDescription": "Join our network of donors and recipients. Find the blood type you need or donate to help others.",
+    "becomeDonor": "Become a Donor",
+    "findDonor": "Find a Donor",
+    "stats": {
+      "donors": "Active Donors",
+      "matches": "Successful Matches",
+      "requests": "Blood Requests",
+      "lives": "Lives Saved",
+      "title": "Making a Real Impact",
+      "description": "Our platform has connected thousands of donors with patients in need, creating a network of hope and healing across the country."
+    },
+    "bloodTypeAvailability": "Blood Type Availability",
+    "testimonials": {
+      "title": "Stories of Hope",
+      "description": "Real stories from doctors, donors, and families whose lives have been touched by the generosity of our blood donation community.",
+      "ctaTitle": "Have a Success Story to Share?",
+      "ctaDescription": "We'd love to hear how RedAid has made a difference in your life or the lives of your patients. Your story could inspire others to join our life-saving community.",
+      "shareStory": "Share Your Story"
+    },
+    "emergency": {
+      "description": "For critical emergencies, call our 24/7 hotline. Our team will immediately connect you with the nearest available donors."
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Simple 3-step process",
+      "step1": "Submit your request or register as donor",
+      "step2": "Get matched with verified donors/requests",
+      "step3": "Coordinate donation and save lives"
+    },
+    "cta": "Get Started Today",
+    "features": {
+      "title": "Why Choose Our Platform",
+      "feature1": "Quick Matching",
+      "feature1Desc": "Find compatible donors instantly",
+      "feature2": "Secure",
+      "feature2Desc": "Your data is protected",
+      "feature3": "Easy to Use",
+      "feature3Desc": "Simple and intuitive interface"
+    }
+  },
+  "login": {
+    "title": "RedAid Admin",
+    "subtitle": "Sign in to access the admin dashboard",
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "signInButton": "Sign In",
+    "invalidCredentials": "Invalid email or password",
+    "error": "An error occurred. Please try again.",
+    "loading": "Signing in..."
+  },
+  "donate": {
+    "title": "Become a Blood Donor",
+    "subtitle": "Join our community of life-savers. Register as a blood donor and help save lives in your community.",
+    "registrationForm": "Donor Registration Form",
+    "personalInfo": "Personal Information",
+    "medicalInfo": "Medical Information",
+    "contactPreferences": "Contact Preferences",
+    "privacyConsent": "Privacy & Consent",
+    "agreeTerms": "I agree to the terms and conditions",
+    "agreePrivacy": "I agree to the privacy policy",
+    "registerButton": "Register as Donor",
+    "success": "Registration successful",
+    "successMessage": "Thank you for registering as a donor!"
+  },
+  "request": {
+    "title": "Request Blood",
+    "subtitle": "Fill out the form below to request blood. Our team will immediately start searching for matching donors in your area.",
+    "requestForm": "Blood Request Form",
+    "requesterInfo": "Requester Information",
+    "bloodDetails": "Blood Details",
+    "requestButton": "Submit Request",
+    "success": "Request submitted successfully",
+    "successMessage": "Your blood request has been submitted. We will notify you when a donor is found.",
+    "urgencyLevel": "Urgency Level",
+    "critical": "Critical",
+    "urgent": "Urgent",
+    "normal": "Normal"
+  },
+  "confirmation": {
+    "title": "Confirmation",
+    "success": "Successful!",
+    "donorConfirmation": "Thank you for registering as a donor",
+    "requestConfirmation": "Your blood request has been submitted",
+    "nextSteps": "What's Next?",
+    "backHome": "Back to Home",
+    "backDashboard": "Back to Dashboard"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "subtitle": "Your privacy is our priority. Learn how we protect your personal information.",
+    "lastUpdated": "Last updated",
+    "version": "Version 1.0",
+    "overview": "Overview",
+    "overviewDesc": "RedAid is committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, protect, and share your information when you use our blood donation platform.",
+    "informationCollected": "Information We Collect",
+    "informationUsed": "How We Use Your Information",
+    "dataProtection": "Data Protection",
+    "yourRights": "Your Rights",
+    "contact": "Contact Us"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome Back",
+    "overview": "Overview",
+    "donorStats": "Donor Statistics",
+    "requestStats": "Request Statistics",
+    "recentMatches": "Recent Matches",
+    "recentRequests": "Recent Requests",
+    "donorsTable": {
+      "title": "Donors",
+      "bloodType": "Blood Type",
+      "location": "Location",
+      "lastDonation": "Last Donation",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "requestsTable": {
+      "title": "Blood Requests",
+      "bloodType": "Blood Type",
+      "requiredBy": "Required By",
+      "location": "Location",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "matchesTable": {
+      "title": "Matches",
+      "donor": "Donor",
+      "recipient": "Recipient",
+      "bloodType": "Blood Type",
+      "date": "Date",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "donorGrowth": "Donor Growth",
+      "requestTrends": "Request Trends",
+      "matchSuccess": "Match Success Rate",
+      "bloodTypeDistribution": "Blood Type Distribution"
+    },
+    "settings": {
+      "title": "Settings",
+      "profile": "Profile Settings",
+      "security": "Security",
+      "notifications": "Notifications",
+      "preferences": "Preferences"
+    }
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email Address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone Number",
+    "bloodType": "Blood Type",
+    "location": "Location",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "signup": "Create Account",
+    "signupDesc": "Join thousands of donors and recipients",
+    "alreadyHaveAccount": "Already have an account?",
+    "noAccount": "Don't have an account?",
+    "loginButton": "Sign In",
+    "registerButton": "Create Account",
+    "success": "Account created successfully",
+    "loginSuccess": "Logged in successfully",
+    "error": "Login failed. Please check your credentials."
+  },
+  "about": {
+    "title": "About RedAid",
+    "subtitle": "Revolutionizing blood donation through technology and community",
+    "mission": {
+      "title": "Our Mission",
+      "description": "To create a seamless, efficient, and inclusive blood donation network that saves lives by connecting donors with those in urgent need. We believe that technology can bridge the gap between donors and recipients, making blood donation more accessible and impactful."
+    },
+    "vision": {
+      "title": "Our Vision",
+      "description": "A world where no one suffers from blood shortage, where every blood donation is utilized optimally, and where the act of giving blood is celebrated as a simple yet powerful way to save lives in every community."
+    },
+    "values": {
+      "title": "Our Core Values",
+      "compassion": {
+        "title": "Compassion",
+        "description": "We care deeply about every life that can be saved through blood donation"
+      },
+      "community": {
+        "title": "Community",
+        "description": "We believe in the power of collective action to create meaningful change"
+      },
+      "efficiency": {
+        "title": "Efficiency",
+        "description": "We use technology to streamline the donation process and maximize impact"
+      },
+      "accessibility": {
+        "title": "Accessibility",
+        "description": "We make blood donation accessible to everyone, everywhere, anytime"
+      }
+    },
+    "impact": {
+      "title": "Our Impact",
+      "donors": "Active Donors",
+      "recipients": "Blood Recipients",
+      "lives": "Lives Saved",
+      "hospitals": "Partner Hospitals"
+    },
+    "story": {
+      "title": "Our Story",
+      "paragraph1": "RedAid was founded with a simple yet powerful vision: to make blood donation easier, faster, and more impactful. In Bangladesh, thousands of people face life-threatening situations due to blood shortage every year. Traditional blood donation systems are often fragmented, inefficient, and difficult to navigate.",
+      "paragraph2": "Our team recognized this critical gap and decided to leverage technology to create a unified platform. RedAid connects donors with recipients in real-time, provides transparent information, and ensures that every donation reaches the person who needs it most. Since our launch, we have helped facilitate thousands of life-saving blood transfusions.",
+      "paragraph3": "Today, RedAid continues to grow, expanding our network of donors, hospitals, and community partners. We are committed to making blood donation a seamless, rewarding experience for everyone. With every donation facilitated through our platform, we are one step closer to a world where blood shortage is no longer a barrier to receiving critical healthcare."
+    },
+    "milestones": {
+      "title": "Our Journey",
+      "2024": {
+        "title": "Platform Foundation",
+        "description": "Built the core RedAid platform with secure authentication, donor management, and matching algorithms"
+      },
+      "launch": {
+        "title": "Official Launch",
+        "description": "Launched RedAid publicly and began onboarding hospitals, donors, and recipients across Bangladesh"
+      }
+    },
+    "cta": {
+      "title": "Ready to Save Lives?",
+      "description": "Join thousands of donors who are making a difference. Every donation counts.",
+      "becomeDonor": "Become a Donor",
+      "requestBlood": "Request Blood"
+    }
+  },
+  "contact": {
+    "title": "Get In Touch",
+    "subtitle": "Have questions? We're here to help. Contact us anytime.",
+    "methods": {
+      "email": {
+        "title": "Email Us",
+        "description": "Send us an email and we'll respond within 24 hours"
+      },
+      "phone": {
+        "title": "Call Us",
+        "description": "Reach out to us by phone for urgent matters"
+      },
+      "address": {
+        "title": "Visit Us",
+        "description": "Come visit our office in Dhaka"
+      },
+      "hours": {
+        "title": "Available 24/7",
+        "description": "We're available round the clock for emergencies"
+      }
+    },
+    "form": {
+      "title": "Send us a Message",
+      "name": "Full Name",
+      "namePlaceholder": "Enter your full name",
+      "email": "Email Address",
+      "emailPlaceholder": "Enter your email",
+      "phone": "Phone Number",
+      "phonePlaceholder": "Enter your phone number",
+      "subject": "Subject",
+      "subjectPlaceholder": "What is this about?",
+      "message": "Message",
+      "messagePlaceholder": "Tell us how we can help you",
+      "send": "Send Message",
+      "sending": "Sending...",
+      "successMessage": "Thank you! Your message has been received. We'll get back to you soon.",
+      "errorMessage": "Failed to send message. Please try again later."
+    },
+    "info": {
+      "title": "More Information",
+      "hours": {
+        "title": "Business Hours",
+        "weekdays": "Monday - Friday",
+        "weekdaysTime": "9:00 AM - 6:00 PM",
+        "weekends": "Saturday - Sunday",
+        "weekendTime": "10:00 AM - 4:00 PM",
+        "emergency": "24/7 Emergency Support Available"
+      },
+      "response": {
+        "title": "Response Time",
+        "description": "We typically respond to inquiries within 24 hours. For urgent matters, please call our emergency hotline."
+      },
+      "social": {
+        "title": "Follow Us"
+      }
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "q1": {
+        "question": "How do I register as a blood donor?",
+        "answer": "Click on 'Become a Donor' and fill out the registration form with your personal and medical information. You'll receive a confirmation once your profile is verified."
+      },
+      "q2": {
+        "question": "How do I request blood for emergency?",
+        "answer": "Go to the 'Request Blood' section, provide your medical details and requirements. Our system will automatically find compatible donors and notify them."
+      },
+      "q3": {
+        "question": "Is my personal information safe?",
+        "answer": "Yes, we use advanced encryption and security protocols to protect your data. We follow all privacy regulations and never share your information without consent."
+      },
+      "q4": {
+        "question": "How often can I donate blood?",
+        "answer": "Generally, blood donors can donate every 56 days (8 weeks). However, always consult with your healthcare provider for personalized advice."
+      }
+    }
+  }
+}

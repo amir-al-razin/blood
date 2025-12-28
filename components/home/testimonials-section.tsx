@@ -1,6 +1,11 @@
+'use client'
+
 import { Star, Quote } from 'lucide-react'
+import { useTranslations } from '@/lib/i18n'
 
 export function TestimonialsSection() {
+  const t = useTranslations('pages')
+
   const testimonials = [
     {
       name: 'Dr. Sarah Ahmed',
@@ -34,11 +39,10 @@ export function TestimonialsSection() {
         {/* Section Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Stories of Hope
+            {t('home.testimonials.title')}
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Real stories from doctors, donors, and families whose lives have been 
-            touched by the generosity of our blood donation community.
+            {t('home.testimonials.description')}
           </p>
         </div>
 
@@ -92,15 +96,13 @@ export function TestimonialsSection() {
         <div className="mt-12 text-center">
           <div className="bg-red-600 text-white rounded-2xl p-8 max-w-4xl mx-auto">
             <h3 className="text-2xl font-bold mb-4">
-              Have a Success Story to Share?
+              {t('home.testimonials.ctaTitle')}
             </h3>
             <p className="text-red-100 mb-6">
-              We'd love to hear how RedAid has made a difference in your life or 
-              the lives of your patients. Your story could inspire others to join 
-              our life-saving community.
+              {t('home.testimonials.ctaDescription')}
             </p>
             <button className="bg-white text-red-600 px-6 py-3 rounded-lg font-semibold hover:bg-red-50 transition-colors">
-              Share Your Story
+              {t('home.testimonials.shareStory')}
             </button>
           </div>
         </div>

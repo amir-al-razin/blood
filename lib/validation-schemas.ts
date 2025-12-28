@@ -194,7 +194,7 @@ export const auditLogSchema = z.object({
   resourceType: z.string().max(50, 'Resource type too long'),
   resourceId: z.string().max(100, 'Resource ID too long'),
   details: z.record(z.any()).optional(),
-  ipAddress: z.string().ip().optional(),
+  ipAddress: z.string().regex(/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^(?:[a-f0-9]{0,4}:){2,7}[a-f0-9]{0,4}$/, 'Invalid IP address').optional(),
   userAgent: z.string().max(500, 'User agent too long').optional()
 })
 
@@ -218,7 +218,7 @@ export const securityEventSchema = z.object({
   ]),
   severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
   description: z.string().max(500, 'Description too long'),
-  ipAddress: z.string().ip().optional(),
+  ipAddress: z.string().regex(/^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$|^(?:[a-f0-9]{0,4}:){2,7}[a-f0-9]{0,4}$/, 'Invalid IP address').optional(),
   userAgent: z.string().max(500, 'User agent too long').optional(),
   userId: baseValidation.id.optional(),
   metadata: z.record(z.any()).optional()

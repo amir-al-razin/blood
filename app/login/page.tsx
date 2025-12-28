@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,7 +10,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Heart } from 'lucide-react'
+import { Loader2, Heart, Shield } from 'lucide-react'
+import { useTranslations } from '@/lib/i18n'
+import { signInWithEmail, getIdToken } from '@/lib/firebase-auth'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -20,7 +21,8 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+export default function AdminLoginPage() {
+  const t = useTranslations('login')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -38,21 +40,43 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const result = await signIn('credentials', {
-        email: data.email,
-        password: data.password,
-        redirect: false
+      // Sign in with Firebase
+      const result = await signInWithEmail(data.email, data.password)
+
+      if (!result.success || !result.user) {
+        setError(result.error || 'Invalid email or password')
+        return
+      }
+
+      // Get Firebase ID token
+      const token = await getIdToken()
+      if (!token) {
+        setError('Failed to get authentication token')
+        return
+      }
+
+      // Verify admin role with our backend
+      const adminCheck = await fetch('/api/admin/verify-session', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       })
 
-      if (result?.error) {
-        setError('Invalid email or password')
-      } else {
-        // Get the updated session to check user role
-        const session = await getSession()
-        router.push('/dashboard')
-        router.refresh()
+      if (!adminCheck.ok) {
+        const errorData = await adminCheck.json()
+        setError(errorData.error || 'You do not have admin access')
+        // Sign out if not an admin
+        const { signOutUser } = await import('@/lib/firebase-auth')
+        await signOutUser()
+        return
       }
-    } catch (error) {
+
+      // Redirect to admin dashboard
+      window.location.href = '/dashboard'
+    } catch (error: any) {
+      console.error('Login error:', error)
       setError('An error occurred. Please try again.')
     } finally {
       setIsLoading(false)
@@ -65,11 +89,11 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-red-600 p-3 rounded-full">
-              <Heart className="h-8 w-8 text-white" />
+              <Shield className="h-8 w-8 text-white" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
-            RedAid Admin
+            Admin Login
           </CardTitle>
           <CardDescription>
             Sign in to access the admin dashboard
@@ -82,7 +106,7 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -128,10 +152,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Demo Credentials:</p>
-            <p className="font-mono text-xs mt-1">
-              admin@redaid.com / admin123
-            </p>
+            <p>For admin access, contact the system administrator.</p>
           </div>
         </CardContent>
       </Card>

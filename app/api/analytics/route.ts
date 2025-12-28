@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { auth } from '@/lib/auth'
-import { 
-  startOfDay, 
-  endOfDay, 
-  subDays, 
-  format, 
+import { auth } from '@/lib/auth-utils'
+import {
+  startOfDay,
+  endOfDay,
+  subDays,
+  format,
   eachDayOfInterval,
   startOfMonth,
   endOfMonth,
@@ -15,7 +15,7 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -75,41 +75,41 @@ export async function GET(request: NextRequest) {
         db.donor.count({ where: { isVerified: true } }),
         db.donor.count({ where: { isAvailable: true } })
       ]),
-      
+
       // Period-specific stats
       Promise.all([
-        db.donor.count({ 
-          where: { 
-            createdAt: { 
-              gte: startOfDay(dateRange.start), 
-              lte: endOfDay(dateRange.end) 
-            } 
-          } 
+        db.donor.count({
+          where: {
+            createdAt: {
+              gte: startOfDay(dateRange.start),
+              lte: endOfDay(dateRange.end)
+            }
+          }
         }),
-        db.request.count({ 
-          where: { 
-            createdAt: { 
-              gte: startOfDay(dateRange.start), 
-              lte: endOfDay(dateRange.end) 
-            } 
-          } 
+        db.request.count({
+          where: {
+            createdAt: {
+              gte: startOfDay(dateRange.start),
+              lte: endOfDay(dateRange.end)
+            }
+          }
         }),
-        db.match.count({ 
-          where: { 
-            createdAt: { 
-              gte: startOfDay(dateRange.start), 
-              lte: endOfDay(dateRange.end) 
-            } 
-          } 
+        db.match.count({
+          where: {
+            createdAt: {
+              gte: startOfDay(dateRange.start),
+              lte: endOfDay(dateRange.end)
+            }
+          }
         }),
-        db.match.count({ 
-          where: { 
+        db.match.count({
+          where: {
             status: 'COMPLETED',
-            createdAt: { 
-              gte: startOfDay(dateRange.start), 
-              lte: endOfDay(dateRange.end) 
-            } 
-          } 
+            createdAt: {
+              gte: startOfDay(dateRange.start),
+              lte: endOfDay(dateRange.end)
+            }
+          }
         })
       ]),
 
@@ -133,9 +133,9 @@ export async function GET(request: NextRequest) {
         by: ['urgencyLevel'],
         _count: { urgencyLevel: true },
         where: {
-          createdAt: { 
-            gte: startOfDay(dateRange.start), 
-            lte: endOfDay(dateRange.end) 
+          createdAt: {
+            gte: startOfDay(dateRange.start),
+            lte: endOfDay(dateRange.end)
           }
         }
       }),
@@ -193,8 +193,8 @@ export async function GET(request: NextRequest) {
       },
       retention: {
         repeatDonors: donorRetention.length,
-        averageDonations: donorRetention.length > 0 
-          ? donorRetention.reduce((sum, donor) => sum + donor.donationCount, 0) / donorRetention.length 
+        averageDonations: donorRetention.length > 0
+          ? donorRetention.reduce((sum, donor) => sum + donor.donationCount, 0) / donorRetention.length
           : 0,
         retentionRate: totalStats[0] > 0 ? (donorRetention.length / totalStats[0]) * 100 : 0
       },
@@ -220,12 +220,12 @@ export async function GET(request: NextRequest) {
 
 async function getDailyTrends(startDate: Date, endDate: Date) {
   const days = eachDayOfInterval({ start: startDate, end: endDate })
-  
+
   const trends = await Promise.all(
     days.map(async (day) => {
       const dayStart = startOfDay(day)
       const dayEnd = endOfDay(day)
-      
+
       const [donors, requests, matches] = await Promise.all([
         db.donor.count({
           where: { createdAt: { gte: dayStart, lte: dayEnd } }
@@ -237,7 +237,7 @@ async function getDailyTrends(startDate: Date, endDate: Date) {
           where: { createdAt: { gte: dayStart, lte: dayEnd } }
         })
       ])
-      
+
       return {
         date: format(day, 'yyyy-MM-dd'),
         donors,
@@ -246,7 +246,7 @@ async function getDailyTrends(startDate: Date, endDate: Date) {
       }
     })
   )
-  
+
   return trends
 }
 
@@ -255,7 +255,7 @@ async function getMonthlyTrends() {
   for (let i = 11; i >= 0; i--) {
     const monthStart = startOfMonth(subMonths(new Date(), i))
     const monthEnd = endOfMonth(subMonths(new Date(), i))
-    
+
     const [donors, requests, matches, completedMatches] = await Promise.all([
       db.donor.count({
         where: { createdAt: { gte: monthStart, lte: monthEnd } }
@@ -267,13 +267,13 @@ async function getMonthlyTrends() {
         where: { createdAt: { gte: monthStart, lte: monthEnd } }
       }),
       db.match.count({
-        where: { 
+        where: {
           status: 'COMPLETED',
-          createdAt: { gte: monthStart, lte: monthEnd } 
+          createdAt: { gte: monthStart, lte: monthEnd }
         }
       })
     ])
-    
+
     months.push({
       month: format(monthStart, 'MMM yyyy'),
       donors,
@@ -283,13 +283,13 @@ async function getMonthlyTrends() {
       successRate: matches > 0 ? (completedMatches / matches) * 100 : 0
     })
   }
-  
+
   return months
 }
 
 async function getSuccessRateByBloodType(startDate: Date, endDate: Date) {
   const bloodTypes = ['A_POSITIVE', 'A_NEGATIVE', 'B_POSITIVE', 'B_NEGATIVE', 'AB_POSITIVE', 'AB_NEGATIVE', 'O_POSITIVE', 'O_NEGATIVE']
-  
+
   const successRates = await Promise.all(
     bloodTypes.map(async (bloodType) => {
       const [totalMatches, completedMatches] = await Promise.all([
@@ -307,7 +307,7 @@ async function getSuccessRateByBloodType(startDate: Date, endDate: Date) {
           }
         })
       ])
-      
+
       return {
         bloodType: bloodType.replace('_', ''),
         totalMatches,
@@ -316,7 +316,7 @@ async function getSuccessRateByBloodType(startDate: Date, endDate: Date) {
       }
     })
   )
-  
+
   return successRates.filter(rate => rate.totalMatches > 0)
 }
 
@@ -331,16 +331,16 @@ async function getAverageResponseTime(startDate: Date, endDate: Date) {
       acceptedAt: true
     }
   })
-  
+
   if (matches.length === 0) return 0
-  
+
   const totalResponseTime = matches.reduce((sum, match) => {
     if (match.acceptedAt) {
       return sum + (match.acceptedAt.getTime() - match.createdAt.getTime())
     }
     return sum
   }, 0)
-  
+
   // Return average response time in hours
   return totalResponseTime / matches.length / (1000 * 60 * 60)
 }

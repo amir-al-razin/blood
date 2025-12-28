@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { matchUtils, auditUtils } from '@/lib/db-utils'
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/auth-utils'
 
 const updateMatchSchema = z.object({
   status: z.enum(['PENDING', 'CONTACTED', 'ACCEPTED', 'REJECTED', 'COMPLETED', 'CANCELLED']),
@@ -98,7 +98,7 @@ export async function PATCH(
     }
 
     // Check authentication
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -137,8 +137,8 @@ export async function PATCH(
 
     if (!validTransitions[existingMatch.status]?.includes(validatedData.status)) {
       return NextResponse.json(
-        { 
-          error: `Cannot change status from ${existingMatch.status} to ${validatedData.status}` 
+        {
+          error: `Cannot change status from ${existingMatch.status} to ${validatedData.status}`
         },
         { status: 400 }
       )
@@ -177,7 +177,7 @@ export async function PATCH(
       if (completedUnits >= totalRequiredUnits) {
         await db.request.update({
           where: { id: updatedMatch.requestId },
-          data: { 
+          data: {
             status: 'COMPLETED',
             completedAt: new Date()
           }
@@ -243,7 +243,7 @@ export async function DELETE(
     }
 
     // Check authentication
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user) {
       return NextResponse.json(
         { error: 'Authentication required' },

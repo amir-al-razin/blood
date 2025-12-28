@@ -1,19 +1,9 @@
 import { db } from '@/lib/db'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table'
-import { 
-  Clock,
-  AlertTriangle
-} from 'lucide-react'
 import { RequestActions } from './request-actions'
 import { formatDistanceToNow } from 'date-fns'
+import Link from 'next/link'
+import { ChevronLeft, ChevronRight, AlertTriangle, Clock } from 'lucide-react'
 
 interface RequestsTableProps {
   searchParams: { [key: string]: string | string[] | undefined }
@@ -21,11 +11,11 @@ interface RequestsTableProps {
 
 async function getRequests(searchParams: RequestsTableProps['searchParams']) {
   const page = parseInt((searchParams.page as string) || '1')
-  const limit = parseInt((searchParams.limit as string) || '10')
+  const limit = 15 // Show more items per page
   const status = searchParams.status as string
   const bloodType = searchParams.bloodType as string
-  const location = searchParams.location as string
   const urgency = searchParams.urgency as string
+  const search = searchParams.search as string
 
   const skip = (page - 1) * limit
 
@@ -33,8 +23,14 @@ async function getRequests(searchParams: RequestsTableProps['searchParams']) {
   const where: any = {}
   if (status) where.status = status
   if (bloodType) where.bloodType = bloodType
-  if (location) where.location = { contains: location, mode: 'insensitive' }
   if (urgency) where.urgencyLevel = urgency
+  if (search) {
+    where.OR = [
+      { requesterName: { contains: search, mode: 'insensitive' } },
+      { requesterPhone: { contains: search, mode: 'insensitive' } },
+      { referenceId: { contains: search, mode: 'insensitive' } },
+    ]
+  }
 
   try {
     const [requests, total] = await Promise.all([
@@ -43,7 +39,7 @@ async function getRequests(searchParams: RequestsTableProps['searchParams']) {
         skip,
         take: limit,
         orderBy: [
-          { urgencyLevel: 'asc' }, // Critical first
+          { urgencyLevel: 'asc' },
           { createdAt: 'desc' }
         ],
         include: {
@@ -54,8 +50,6 @@ async function getRequests(searchParams: RequestsTableProps['searchParams']) {
                   id: true,
                   name: true,
                   bloodType: true,
-                  area: true,
-                  isVerified: true
                 }
               }
             }
@@ -78,60 +72,37 @@ async function getRequests(searchParams: RequestsTableProps['searchParams']) {
     console.error('Error fetching requests:', error)
     return {
       requests: [],
-      pagination: { page: 1, limit: 10, total: 0, pages: 0 }
+      pagination: { page: 1, limit: 15, total: 0, pages: 0 }
     }
   }
 }
 
-const getStatusBadge = (status: string) => {
+const getStatusStyle = (status: string) => {
   switch (status) {
     case 'PENDING':
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>
+      return 'bg-amber-50 text-amber-700 border-amber-200'
     case 'IN_PROGRESS':
-      return <Badge variant="secondary" className="bg-blue-100 text-blue-800">In Progress</Badge>
+      return 'bg-blue-50 text-blue-700 border-blue-200'
     case 'COMPLETED':
-      return <Badge variant="secondary" className="bg-green-100 text-green-800">Completed</Badge>
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200'
     case 'CANCELLED':
-      return <Badge variant="secondary" className="bg-red-100 text-red-800">Cancelled</Badge>
+      return 'bg-gray-100 text-gray-600 border-gray-200'
     default:
-      return <Badge variant="secondary">{status}</Badge>
+      return 'bg-gray-100 text-gray-600 border-gray-200'
   }
 }
 
-const getUrgencyBadge = (urgency: string) => {
+const getUrgencyStyle = (urgency: string) => {
   switch (urgency) {
     case 'CRITICAL':
-      return (
-        <Badge variant="destructive" className="bg-red-600 text-white">
-          <AlertTriangle className="w-3 h-3 mr-1" />
-          Critical
-        </Badge>
-      )
+      return { bg: 'bg-red-500', text: 'text-white', icon: true }
     case 'URGENT':
-      return (
-        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-          <Clock className="w-3 h-3 mr-1" />
-          Urgent
-        </Badge>
-      )
+      return { bg: 'bg-orange-100', text: 'text-orange-700', icon: true }
     case 'NORMAL':
-      return (
-        <Badge variant="secondary" className="bg-gray-100 text-gray-800">
-          Normal
-        </Badge>
-      )
+      return { bg: 'bg-gray-100', text: 'text-gray-600', icon: false }
     default:
-      return <Badge variant="secondary">{urgency}</Badge>
+      return { bg: 'bg-gray-100', text: 'text-gray-600', icon: false }
   }
-}
-
-const getBloodTypeBadge = (bloodType: string) => {
-  const formatted = bloodType.replace('_', '')
-  return (
-    <Badge variant="outline" className="font-mono">
-      {formatted}
-    </Badge>
-  )
 }
 
 export async function RequestsTable({ searchParams }: RequestsTableProps) {
@@ -139,116 +110,177 @@ export async function RequestsTable({ searchParams }: RequestsTableProps) {
 
   if (requests.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No blood requests found.</p>
+      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+        <div className="text-5xl mb-4">📋</div>
+        <p className="text-lg font-medium text-gray-600">No requests found</p>
+        <p className="text-sm">Try adjusting your filters</p>
       </div>
     )
   }
 
+  const currentPage = pagination.page
+  const totalPages = pagination.pages
+
+  // Build pagination URL helper
+  const getPageUrl = (page: number) => {
+    const params = new URLSearchParams()
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (value && key !== 'page') {
+        params.set(key, value as string)
+      }
+    })
+    params.set('page', page.toString())
+    return `?${params.toString()}`
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Reference ID</TableHead>
-              <TableHead>Requester</TableHead>
-              <TableHead>Blood Type</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Urgency</TableHead>
-              <TableHead>Units</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Matches</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {requests.map((request) => (
-              <TableRow key={request.id}>
-                <TableCell className="font-mono text-sm">
-                  {request.referenceId.slice(-8)}
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{request.requesterName}</div>
-                    <div className="text-sm text-muted-foreground">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100 bg-gray-50/50">
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">ID</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Requester</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Blood</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Location</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Urgency</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Units</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Status</th>
+              <th className="text-center text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Matches</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Created</th>
+              <th className="w-10 px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {requests.map((request) => {
+              const urgencyStyle = getUrgencyStyle(request.urgencyLevel)
+              return (
+                <tr key={request.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-4 py-3">
+                    <span className="font-mono text-sm text-gray-900">
+                      {request.referenceId.slice(-8).toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-gray-900">{request.requesterName}</div>
+                    <a href={`tel:${request.requesterPhone}`} className="text-sm text-red-600 hover:underline">
                       {request.requesterPhone}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {getBloodTypeBadge(request.bloodType)}
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{request.location}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {request.hospital}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {getUrgencyBadge(request.urgencyLevel)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {request.unitsRequired}
-                </TableCell>
-                <TableCell>
-                  {getStatusBadge(request.status)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-sm">
+                    </a>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-red-50 text-red-700 font-bold text-sm">
+                      {request.bloodType.replace('_POSITIVE', '+').replace('_NEGATIVE', '-')}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-gray-900">{request.location}</div>
+                    <div className="text-sm text-gray-500 truncate max-w-[160px]">{request.hospital}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-medium ${urgencyStyle.bg} ${urgencyStyle.text}`}>
+                      {urgencyStyle.icon && (request.urgencyLevel === 'CRITICAL'
+                        ? <AlertTriangle className="w-3 h-3" />
+                        : <Clock className="w-3 h-3" />
+                      )}
+                      {request.urgencyLevel.charAt(0) + request.urgencyLevel.slice(1).toLowerCase()}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="font-semibold text-gray-900">{request.unitsRequired}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium border ${getStatusStyle(request.status)}`}>
+                      {request.status.replace('_', ' ').charAt(0) + request.status.replace('_', ' ').slice(1).toLowerCase()}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium
+                      ${request.matches.length > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                       {request.matches.length}
                     </span>
-                    {request.matches.length > 0 && (
-                      <div className="flex -space-x-1">
-                        {request.matches.slice(0, 3).map((match, index) => (
-                          <div
-                            key={match.id}
-                            className="w-6 h-6 rounded-full bg-red-100 border-2 border-white flex items-center justify-center text-xs font-medium text-red-700"
-                            title={match.donor.name}
-                          >
-                            {match.donor.name.charAt(0)}
-                          </div>
-                        ))}
-                        {request.matches.length > 3 && (
-                          <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
-                            +{request.matches.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                </TableCell>
-                <TableCell>
-                  <RequestActions request={request} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                  </td>
+                  <td className="px-4 py-3">
+                    <RequestActions request={request} />
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-            {pagination.total} results
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+        <p className="text-sm text-gray-600">
+          Showing <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> to{' '}
+          <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
+          <span className="font-medium">{pagination.total}</span> results
+        </p>
+
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            {/* Previous */}
+            {currentPage > 1 ? (
+              <Link
+                href={getPageUrl(currentPage - 1)}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Link>
+            ) : (
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-300">
+                <ChevronLeft className="w-4 h-4" />
+              </span>
+            )}
+
+            {/* Page Numbers */}
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number
+              if (totalPages <= 5) {
+                pageNum = i + 1
+              } else if (currentPage <= 3) {
+                pageNum = i + 1
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i
+              } else {
+                pageNum = currentPage - 2 + i
+              }
+
+              return (
+                <Link
+                  key={pageNum}
+                  href={getPageUrl(pageNum)}
+                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-medium transition-colors
+                    ${pageNum === currentPage
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                  {pageNum}
+                </Link>
+              )
+            })}
+
+            {/* Next */}
+            {currentPage < totalPages ? (
+              <Link
+                href={getPageUrl(currentPage + 1)}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-300">
+                <ChevronRight className="w-4 h-4" />
+              </span>
+            )}
           </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">
-              Page {pagination.page} of {pagination.pages}
-            </span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

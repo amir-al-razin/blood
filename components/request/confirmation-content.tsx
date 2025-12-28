@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle, Phone, Mail, Clock, Heart } from 'lucide-react'
+import { useTranslations } from '@/lib/i18n'
 
 export function ConfirmationContent() {
+  const t = useTranslations('confirmation')
+  const tCommon = useTranslations('common')
   const searchParams = useSearchParams()
   const referenceId = searchParams.get('ref')
 
@@ -16,9 +19,9 @@ export function ConfirmationContent() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <Card>
             <CardContent className="text-center py-12">
-              <p className="text-gray-600">Invalid confirmation link.</p>
+              <p className="text-gray-600">{t('invalidLink')}</p>
               <Button asChild className="mt-4">
-                <Link href="/request">Submit New Request</Link>
+                <Link href="/request">{t('backRequest')}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -37,10 +40,10 @@ export function ConfirmationContent() {
               <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
             <CardTitle className="text-2xl text-green-600">
-              Request Submitted Successfully!
+              {t('success')}!
             </CardTitle>
             <CardDescription className="text-lg">
-              Your blood request has been received and is being processed.
+              {t('successMessage')}
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
@@ -61,7 +64,7 @@ export function ConfirmationContent() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Clock className="mr-2 h-5 w-5 text-blue-600" />
-              What Happens Next?
+              {t('nextSteps')}
             </CardTitle>
           </CardHeader>
           <CardContent>

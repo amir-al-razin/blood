@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { auth } from '@/lib/auth'
-import { 
-  calculateLocationDistance, 
-  bloodCompatibility, 
-  isBloodTypeCompatible 
+import { auth } from '@/lib/auth-utils'
+import {
+  calculateLocationDistance,
+  bloodCompatibility,
+  isBloodTypeCompatible
 } from '@/lib/distance-utils'
 
 const findDonorsSchema = z.object({
@@ -109,17 +109,17 @@ export async function POST(request: NextRequest) {
     // Calculate distances and filter
     const donorsWithDistance = donors.map(donor => {
       const distance = calculateLocationDistance(donor.area, bloodRequest.location)
-      
+
       // Calculate more precise eligibility
       let isEligible = true
       let nextEligibleDate = null
-      
+
       if (donor.lastDonation) {
         const daysSinceLastDonation = Math.floor(
           (new Date().getTime() - donor.lastDonation.getTime()) / (1000 * 60 * 60 * 24)
         )
         const requiredGap = donor.gender === 'MALE' ? 90 : 120
-        
+
         if (daysSinceLastDonation < requiredGap) {
           isEligible = false
           nextEligibleDate = new Date(donor.lastDonation.getTime() + requiredGap * 24 * 60 * 60 * 1000)
@@ -142,12 +142,12 @@ export async function POST(request: NextRequest) {
         // Prioritize eligible donors
         if (a.isEligible && !b.isEligible) return -1
         if (!a.isEligible && b.isEligible) return 1
-        
+
         // Then by compatibility score
         if (a.compatibilityScore !== b.compatibilityScore) {
           return b.compatibilityScore - a.compatibilityScore
         }
-        
+
         // Then by distance
         return a.distance - b.distance
       })

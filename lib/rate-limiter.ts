@@ -30,8 +30,8 @@ export const rateLimitConfigs = {
   
   // Authentication endpoints
   auth: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5,
+    windowMs: 5 * 60 * 1000, // 5 minutes (reduced for better UX)
+    maxRequests: 10, // Increased from 5 to be more forgiving
     message: 'Too many login attempts, please try again later'
   },
   
@@ -134,11 +134,16 @@ export class RateLimiter {
    */
   private cleanup(): void {
     const now = Date.now()
+    const expiredKeys: string[] = []
+    
     for (const [key, record] of rateLimitStore.entries()) {
       if (now > record.resetTime) {
-        rateLimitStore.delete(key)
+        expiredKeys.push(key)
       }
     }
+    
+    // Delete expired keys
+    expiredKeys.forEach(key => rateLimitStore.delete(key))
   }
 }
 
@@ -256,5 +261,39 @@ export function createActionRateLimiter(config: RateLimitConfig) {
   
   return (identifier: string, action: string): RateLimitResult => {
     return limiter.check(`${identifier}:${action}`)
+  }
+}
+
+/**
+ * Clear all rate limit data (for development/testing only)
+ */
+export function clearAllRateLimits(): void {
+  rateLimitStore.clear()
+}
+
+/**
+ * Clear rate limit for specific identifier
+ */
+export function clearRateLimitForIdentifier(identifier: string): void {
+  rateLimitStore.delete(identifier)
+}
+
+/**
+ * Get current rate limit store status (for debugging)
+ */
+export function getRateLimitStatus(): {
+  totalEntries: number
+  entries: Array<{ identifier: string; count: number; resetIn: number }>
+} {
+  const now = Date.now()
+  const entries = Array.from(rateLimitStore.entries()).map(([identifier, record]) => ({
+    identifier,
+    count: record.count,
+    resetIn: Math.max(0, record.resetTime - now)
+  }))
+  
+  return {
+    totalEntries: rateLimitStore.size,
+    entries
   }
 }
